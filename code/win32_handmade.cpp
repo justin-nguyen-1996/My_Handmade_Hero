@@ -1,47 +1,64 @@
 
 #include <windows.h>
+#include <stdint.h>
 
 // globals
 static bool Running;
 static BITMAPINFO BitmapInfo;
 static void* BitmapMemory;
-static HBITMAP BitmapHandle;
-static HDC BitmapDeviceContext;
+
+static void
+RenderWeirdGradient(int Width, int Height, int BytesPerPixel, int xOffset, int yOffset) 
+{
+	uint8_t* row = (uint8_t*) BitmapMemory;
+	for (int y = 0; y < Height; ++y) {
+		
+		uint32_t* pixel = (uint32_t*) row;
+		for (int x = 0; x < Width; ++x) {
+			//   Memory:   BB GG RR XX
+			//   Register: XX RR GG BB
+			uint8_t blue = (x + xOffset);
+			uint8_t green = (y + yOffset);
+			uint8_t red;
+			*pixel = ((green << 8) | blue);
+			pixel += 1;
+		}
+
+		row += Width * BytesPerPixel;
+	}
+}
 
 // Create the buffer that we will have Windows display for us
 // Device Independent Bitmap
 static void
 ResizeDibSection(int Width, int Height)
 {
-	// TODO: check memory freeing (either free first or after)
- 
-	// Free old DIB section before creating a new one, Else create the device context
-	if (BitmapHandle)          { DeleteObject(BitmapHandle); }
-	if (! BitmapDeviceContext) { BitmapDeviceContext = CreateCompatibleDC(0); }
- 
+	// Free our old DIB section if we ask for a new one
+	if (BitmapMemory) { VirtualFree(BitmapMemory, 0, MEM_RELEASE); }
+	
 	// setup the bit map info header
-	BITMAPINFOHEADER bmiHeader = BitmapInfo.bmiHeader;
-	bmiHeader.biSize = sizeof(bmiHeader);
-	bmiHeader.biWidth = Width;
-	bmiHeader.biHeight = Height;
-	bmiHeader.biPlanes = 1;
-	bmiHeader.biBitCount = 32;
-	bmiHeader.biCompression = BI_RGB;
+	BitmapInfo.bmiHeader.biSize = sizeof(BitmapInfo.bmiHeader);
+	BitmapInfo.bmiHeader.biWidth = Width;
+	BitmapInfo.bmiHeader.biHeight = -Height;
+	BitmapInfo.bmiHeader.biPlanes = 1;
+	BitmapInfo.bmiHeader.biBitCount = 32;
+	BitmapInfo.bmiHeader.biCompression = BI_RGB;
 
-	BitmapHandle = CreateDIBSection(
-			BitmapDeviceContext, &BitmapInfo,
-			DIB_RGB_COLORS,
-		   	&BitmapMemory,
-			0, 0);
+	// Allocate memory for our DIB section
+	int BytesPerPixel = 4;
+	int BitmapMemorySize = (Width * Height) * (BytesPerPixel);
+	BitmapMemory = VirtualAlloc(0, BitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
 }
 
 // Have Windows output our buffer and scale it as appropriate
 static void
-Win32_UpdateWindow(HDC DeviceContext, int X, int Y, int W, int H)
+DisplayDib(HDC DeviceContext, RECT* WinRect, int X, int Y, int W, int H)
 {
 	StretchDIBits(DeviceContext,
-		   		  X, Y, W, H,
-				  X, Y, W, H,
+		   		  /*X, Y, W, H,
+				  X, Y, W, H,*/
+				  0, 0, WinRect->right - WinRect->left, WinRect->bottom - WinRect->top,
+				  0, 0, WinRect->right - WinRect->left, WinRect->bottom - WinRect->top,
 				  BitmapMemory,
 				  &BitmapInfo,
 				  DIB_RGB_COLORS,
@@ -72,7 +89,9 @@ WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 							   int Y = Paint.rcPaint.top;
 							   int W = Paint.rcPaint.right - Paint.rcPaint.left;
 							   int H = Paint.rcPaint.bottom - Paint.rcPaint.top;
-							   Win32_UpdateWindow(DeviceContext, X, Y, W, H); // have Windows output our buffer
+							   RECT ClientRect;
+							   GetClientRect(hwnd, &ClientRect);
+							   DisplayDib(DeviceContext, &ClientRect, X, Y, W, H); // have Windows output our buffer
 							   EndPaint(hwnd, &Paint);
 							   break;
 							 }
@@ -103,16 +122,20 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 		if (WindowHandle) {
 			// Message Loop
 			// Message queue --> pull out one at a time --> translate & dispatch --> parse in Window Callback procedure
-			Running = true;
+			Running = true; MSG Message; int xOffset = 0; int yOffset = 0;
 			while (Running) {
-				MSG Message;
-				BOOL MessageResult = GetMessageA(&Message, 0, 0, 0);
-				if (MessageResult > 0) {
+				
+				while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE)) {
+					if (Message.message == WM_QUIT) { Running = false; }
 					TranslateMessage(&Message);
 					DispatchMessageA(&Message);
-				} else {
-					break;
 				}
+				int tempW = 4096; int tempH = 4096; HDC DeviceContext = GetDC(WindowHandle); RECT ClientRect; GetClientRect(WindowHandle, &ClientRect);
+				int w = ClientRect.right - ClientRect.left; int h = ClientRect.bottom - ClientRect.top;
+				RenderWeirdGradient(w, h, 4, xOffset, yOffset);
+				DisplayDib(DeviceContext, &ClientRect, 0, 0, w, h); // have Windows output our buffer
+				ReleaseDC(WindowHandle, DeviceContext);
+				++xOffset;
 			}
 		}
 	}
