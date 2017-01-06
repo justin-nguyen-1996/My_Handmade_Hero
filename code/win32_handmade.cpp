@@ -18,7 +18,9 @@ struct win32_WinDim {
 	int Height;
 };
 
-/* resolving Xinput DLL ... magic unicorns */
+/*******************************************/
+
+// resolving Xinput DLL ... magic unicorns
 
 // 1) (X_INPUT_GET_STATE) is for our own use. Calling this fxn macro with param X will evaluate into a function with name X and params specified by get/set state.
 // 2) (x_input_get_state) is now a type. A type that is a function of type (DWORD WINAPI) with params as specified by get/set state.
@@ -57,17 +59,17 @@ static win32_WinDim GetWinDim(HWND window) {
 }
 
 static void
-RenderWeirdGradient(win32_Buffer buffer, int xOffset, int yOffset)
+RenderWeirdGradient(win32_Buffer* buffer, int xOffset, int yOffset)
 {
-	int Width = buffer.Width;
-	int Height = buffer.Height;
-	int BytesPerPixel = buffer.BytesPerPixel;
+	int Width = buffer->Width;
+	int Height = buffer->Height;
+	int BytesPerPixel = buffer->BytesPerPixel;
 
-	uint8_t* row = (uint8_t*) buffer.BitmapMemory;
-	for (int y = 0; y < buffer.Height; ++y) {
+	uint8_t* row = (uint8_t*) buffer->BitmapMemory;
+	for (int y = 0; y < buffer->Height; ++y) {
 
 		uint32_t* pixel = (uint32_t*) row;
-		for (int x = 0; x < buffer.Width; ++x) {
+		for (int x = 0; x < buffer->Width; ++x) {
 			//   Memory:   BB GG RR XX
 			//   Register: XX RR GG BB
 			uint8_t blue = (x + xOffset);
@@ -77,7 +79,18 @@ RenderWeirdGradient(win32_Buffer buffer, int xOffset, int yOffset)
 			pixel += 1;
 		}
 
-		row += buffer.Pitch;
+		row += buffer->Pitch;
+	}
+}
+
+// Manually load the dll (helps with compatibility)
+static void
+LoadXInput() {
+	HMODULE XInputLibrary = LoadLibraryA("xinput1_3.dll"); // load the .dll into our virtual address space, look for import libraries
+	if (XInputLibrary) {
+		XInputGetState = (x_input_get_state*) GetProcAddress(XInputLibrary, "XInputGetState"); // find the desired functions in the specified library
+		XInputSetState = (x_input_set_state*) GetProcAddress(XInputLibrary, "XInputSetState"); // Windows normally uses these addresses to patch up you code
+																							   // by filling in memory addresses with pointers
 	}
 }
 
@@ -109,18 +122,15 @@ ResizeDibSection(win32_Buffer* buffer, int Width, int Height)
 
 // Have Windows output our buffer and scale it as appropriate
 static void
-DisplayDib(HDC DeviceContext, 
-		   int WinWidth, int WinHeight,
-		   win32_Buffer buffer,
-		   int X, int Y, int W, int H)
+DisplayDib(win32_Buffer* buffer,
+	   	   HDC DeviceContext, 
+		   int WinWidth, int WinHeight)
 {
 	StretchDIBits(DeviceContext,
-		   		  /*X, Y, W, H,
-				  X, Y, W, H,*/
 				  0, 0, WinWidth, WinHeight,
-				  0, 0, buffer.Width, buffer.Height,
-				  buffer.BitmapMemory,
-				  &buffer.BitmapInfo,
+				  0, 0, buffer->Width, buffer->Height,
+				  buffer->BitmapMemory,
+				  &buffer->BitmapInfo,
 				  DIB_RGB_COLORS,
 				  SRCCOPY);
 }
@@ -138,6 +148,28 @@ WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 		case WM_DESTROY:       Running = false; break;
 		case WM_ACTIVATEAPP:   OutputDebugStringA("WM_ACTIVATEAPP\n"); break;
 
+		case WM_SYSKEYDOWN:
+		case WM_SYSKEYUP:
+		case WM_KEYDOWN:
+		case WM_KEYUP:       { uint32_t VKCode = wParam; // virtual key code
+							   bool WasDown = ((lParam & (1 << 30)) != 0);
+							   bool IsDown = ((lParam & (1 << 31)) == 0);
+							   if (WasDown != IsDown) {
+							       if (VKCode == 'W') {  } 
+							       else if (VKCode == 'A') { }
+							       else if (VKCode == 'S') { }
+							       else if (VKCode == 'D') { }
+							       else if (VKCode == 'Q') { }
+							       else if (VKCode == 'E') { }
+							       else if (VKCode == VK_UP) { }
+							       else if (VKCode == VK_LEFT) { }
+							       else if (VKCode == VK_DOWN) { }
+							       else if (VKCode == VK_RIGHT) { }
+							       else if (VKCode == VK_ESCAPE) { }
+							       else if (VKCode == VK_SPACE) { }
+							   }
+							 } break;
+
 		case WM_PAINT:       { PAINTSTRUCT Paint;
 							   HDC DeviceContext = BeginPaint(hwnd, &Paint);
 							   int X = Paint.rcPaint.left;
@@ -145,10 +177,9 @@ WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 							   int W = Paint.rcPaint.right - Paint.rcPaint.left;
 							   int H = Paint.rcPaint.bottom - Paint.rcPaint.top;
 							   win32_WinDim Dimension = GetWinDim(hwnd);
-							   DisplayDib(DeviceContext, Dimension.Width, Dimension.Height, GlobalBackBuffer, X, Y, W, H); // display our buffer
+							   DisplayDib(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height); // display our buffer
 							   EndPaint(hwnd, &Paint);
-							   break;
-							 }
+							 } break;
 
 		default:               // OutputDebugStringA("DEFAULT\n");
 							   res = DefWindowProc(hwnd, Msg, wParam, lParam); break;
@@ -161,8 +192,11 @@ WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 int CALLBACK
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
+	// Load XInput .dll
+	LoadXInput();
+	
 	// Set up WindowClass
-	WNDCLASS WindowClass = {};
+	WNDCLASSA WindowClass = {};
 	WindowClass.style = CS_VREDRAW | CS_HREDRAW;
 	WindowClass.lpfnWndProc = WindowProc;
 	WindowClass.hInstance = hInstance;
@@ -193,10 +227,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 				}
 
 				// Poll for XInput
-				for (DWORD ControllerIndex = 0; 
-					 ControllerIndex < XUSER_MAX_COUNT; 
-					 ++ControllerIndex) 
-				{
+				for (DWORD ControllerIndex = 0; ControllerIndex < XUSER_MAX_COUNT; ++ControllerIndex) {
 					XINPUT_STATE ControllerState;
 					if (XInputGetState(ControllerIndex, &ControllerState) == ERROR_SUCCESS) { // controller plugged in
 						XINPUT_GAMEPAD* pad = &ControllerState.Gamepad;
@@ -212,21 +243,17 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 						bool BButton =       (pad->wButtons & XINPUT_GAMEPAD_B);
 						bool XButton =       (pad->wButtons & XINPUT_GAMEPAD_X);
 						bool YButton =       (pad->wButtons & XINPUT_GAMEPAD_Y);
-
 						int16_t StickX = pad->sThumbLX;
 						int16_t StickY = pad->sThumbLY;
-					}
-				   	else { // controller not plugged in
+					} else { // controller not plugged in
 // 						TODO: handle this case
 					}
 				}
 				
 				// TODO: some temp stuff for displaying our gradient
 				win32_WinDim Dimension = GetWinDim(WindowHandle);
-				RenderWeirdGradient(GlobalBackBuffer, xOffset, yOffset);
-				DisplayDib(DeviceContext, Dimension.Width, Dimension.Height, // have Windows output our buffer
-						   GlobalBackBuffer, 0, 0, 
-						   Dimension.Width, Dimension.Height); 
+				RenderWeirdGradient(&GlobalBackBuffer, xOffset, yOffset);
+				DisplayDib(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
 				++xOffset; ++yOffset;
 			}
 		}
