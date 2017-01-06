@@ -1,6 +1,7 @@
 
 #include <windows.h>
 #include <stdint.h>
+#include <xinput.h>
 
 // structs
 struct win32_Buffer {
@@ -16,6 +17,30 @@ struct win32_WinDim {
 	int Width;
 	int Height;
 };
+
+/* resolving Xinput DLL ... magic unicorns */
+
+// 1) (X_INPUT_GET_STATE) is for our own use. Calling this fxn macro with param X will evaluate into a function with name X and params specified by get/set state.
+// 2) (x_input_get_state) is now a type. A type that is a function of type (DWORD WINAPI) with params as specified by get/set state.
+// 3) (XInputGetStateStub) is a function stub that will initialize our function pointer right off the bat.
+// 4) (XInputGetState_) is now a function pointer to XInputGetStateStub. It is statically scoped to this file. This statement sets our function pointer to null.
+// 5) Can still call function by its real name (XInputGetState) but now use our function pointer (XInputGetState_) instead.
+ 
+// XInputGetState
+#define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex,  XINPUT_STATE* pState)            // 1)
+typedef X_INPUT_GET_STATE(x_input_get_state);                                                          // 2)
+X_INPUT_GET_STATE(XInputGetStateStub) { return 0; }                                                    // 3)
+static x_input_get_state* XInputGetState_ = XInputGetStateStub;                                        // 4)
+#define XInputGetState XInputGetState_                                                                 // 5)
+
+// XInputSetState
+#define X_INPUT_SET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_VIBRATION* pVibration)     // 1)
+typedef X_INPUT_SET_STATE(x_input_set_state);                                                          // 2)
+X_INPUT_SET_STATE(XInputSetStateStub) { return 0; }                                                    // 3)
+static x_input_set_state* XInputSetState_ = XInputSetStateStub;                                        // 4)
+#define XInputSetState XInputSetState_                                                                 // 5)
+
+/*******************************************/
 
 // globals
 static bool Running;
@@ -152,25 +177,56 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 		HWND WindowHandle = CreateWindowExA( 0, WindowClass.lpszClassName, "Handmade Hero", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
 										 	 CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, hInstance, 0);
 		if (WindowHandle) {
+			Running = true; 
+			int xOffset = 0; int yOffset = 0; 
+			HDC DeviceContext = GetDC(WindowHandle); 
+ 
 			// Message Loop
-			// Message queue --> pull out one at a time --> translate & dispatch --> parse in Window Callback procedure
-			Running = true; MSG Message; int xOffset = 0; int yOffset = 0;
 			while (Running) {
 
+				// Message queue --> pull out one at a time --> translate & dispatch --> parse in Window Callback procedure
+				MSG Message; 
 				while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE)) {
 					if (Message.message == WM_QUIT) { Running = false; }
 					TranslateMessage(&Message);
 					DispatchMessageA(&Message);
 				}
+
+				// Poll for XInput
+				for (DWORD ControllerIndex = 0; 
+					 ControllerIndex < XUSER_MAX_COUNT; 
+					 ++ControllerIndex) 
+				{
+					XINPUT_STATE ControllerState;
+					if (XInputGetState(ControllerIndex, &ControllerState) == ERROR_SUCCESS) { // controller plugged in
+						XINPUT_GAMEPAD* pad = &ControllerState.Gamepad;
+						bool Up =            (pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
+						bool Down =          (pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
+						bool Left =          (pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
+						bool Right =         (pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
+						bool Start =         (pad->wButtons & XINPUT_GAMEPAD_START);
+						bool Back =          (pad->wButtons & XINPUT_GAMEPAD_BACK);
+						bool LeftShoulder =  (pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
+						bool RightShoulder = (pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
+						bool AButton =       (pad->wButtons & XINPUT_GAMEPAD_A);
+						bool BButton =       (pad->wButtons & XINPUT_GAMEPAD_B);
+						bool XButton =       (pad->wButtons & XINPUT_GAMEPAD_X);
+						bool YButton =       (pad->wButtons & XINPUT_GAMEPAD_Y);
+
+						int16_t StickX = pad->sThumbLX;
+						int16_t StickY = pad->sThumbLY;
+					}
+				   	else { // controller not plugged in
+// 						TODO: handle this case
+					}
+				}
 				
 				// TODO: some temp stuff for displaying our gradient
-			    HDC DeviceContext = GetDC(WindowHandle); 
 				win32_WinDim Dimension = GetWinDim(WindowHandle);
 				RenderWeirdGradient(GlobalBackBuffer, xOffset, yOffset);
 				DisplayDib(DeviceContext, Dimension.Width, Dimension.Height, // have Windows output our buffer
 						   GlobalBackBuffer, 0, 0, 
 						   Dimension.Width, Dimension.Height); 
-				ReleaseDC(WindowHandle, DeviceContext);
 				++xOffset; ++yOffset;
 			}
 		}
