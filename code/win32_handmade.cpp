@@ -28,7 +28,7 @@ struct win32_WinDim {
 // 3) (XInputGetStateStub) is a function stub that will initialize our function pointer right off the bat.
 // 4) (XInputGetState_) is now a function pointer to XInputGetStateStub. It is statically scoped to this file. This statement sets our function pointer to null.
 // 5) Can still call function by its real name (XInputGetState) but now use our function pointer (XInputGetState_) instead.
- 
+
 // XInputGetState
 #define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex,  XINPUT_STATE* pState)            // 1)
 typedef X_INPUT_GET_STATE(x_input_get_state);                                                          // 2)
@@ -95,7 +95,7 @@ RenderWeirdGradient(win32_Buffer* buffer, int xOffset, int yOffset)
 static void
 LoadXInput() {
 	HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll"); // load the .dll into our virtual address space, look for import libraries
-	if (! XInputLibrary) { HMODULE XInputLibrary = LoadLibraryA("xinput1_3.dll"); } 
+	if (! XInputLibrary) { HMODULE XInputLibrary = LoadLibraryA("xinput1_3.dll"); }
 	if (XInputLibrary) {
 		XInputGetState = (x_input_get_state*) GetProcAddress(XInputLibrary, "XInputGetState"); // find the desired functions in the specified library
 		XInputSetState = (x_input_set_state*) GetProcAddress(XInputLibrary, "XInputSetState"); // Windows normally uses these addresses to patch up you code
@@ -108,40 +108,54 @@ static void
 InitDirectSound(HWND Window, int32_t BufferSize, int32_t SamplesPerSecond) {
 	// Load the library
 	HMODULE SoundLibrary = LoadLibraryA("dsound.dll");
-	
+
 	if (SoundLibrary) {
+
 		// Get a Direct Sound object
 		direct_sound_create* DirectSoundCreate = (direct_sound_create*) GetProcAddress(SoundLibrary, "DirectSoundCreate");
 		LPDIRECTSOUND DirectSound;
+
 		if (DirectSoundCreate  &&  SUCCEEDED(DirectSoundCreate(0, &DirectSound, 0))) {
+
+			// Set the buffers' format
+			WAVEFORMATEX WaveFormat = {};
+			WaveFormat.wFormatTag = WAVE_FORMAT_PCM;
+			WaveFormat.nChannels = 2;
+			WaveFormat.nSamplesPerSec = SamplesPerSecond;
+			WaveFormat.wBitsPerSample = 16;
+			WaveFormat.nBlockAlign = WaveFormat.nChannels * WaveFormat.wBitsPerSample / 8;
+			WaveFormat.nAvgBytesPerSec = WaveFormat.nBlockAlign * WaveFormat.nSamplesPerSec;
+			WaveFormat.cbSize = 0;
+
 			if (SUCCEEDED(DirectSound->SetCooperativeLevel(Window, DSSCL_PRIORITY))) {
-				// Create a primary buffer
-				BUFFERDESC BufferDescription = {};
+
+				// Create a primary buffer --> used to get a handle to the actual sound card ... Windows is weird
+				// 						   --> sets the mode of the sound card so we can play the format of sound we want
+				DSBUFFERDESC BufferDescription = {};
 				BufferDescription.dwSize = sizeof(BufferDescription);
-				BufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER; 
+				BufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER;
 				LPDIRECTSOUNDBUFFER PrimaryBuffer;
-				if (SUCCEEDED(CreateSoundBuffer(&BufferDescription, &PrimaryBuffer, 0))) {
-					// Set the primary buffer's format
-					WAVEFORMATEX WaveFormat = {};
-						WaveFormat.wFormatTag = WAVE_FORMAT_PCM;
-						WaveFormat.nChannels = 2;
-						WaveFormat.nSamplesPerSec = SamplesPerSecond;
-						WaveFormat.wBitsPerSample = 16;
-						WaveFormat.nBlockAlign = WaveFormat.nChannels * WaveFormat.wBitsPerSample / 8;
-						WaveFormat.nAvgBytesPerSec = WaveFormat.nBlockAlign * WaveFormat.nSamplesPerSec;
-						WaveFormat.cbSize = 0;
+				
+				if (SUCCEEDED(DirectSound->CreateSoundBuffer(&BufferDescription, &PrimaryBuffer, 0))) {
+					
 					if (SUCCEEDED(PrimaryBuffer->SetFormat(&WaveFormat))) {
 						
 					}
 				}
 			}
-			
-			// Create a secondary buffer
+
+			// Create a secondary buffer --> our actual sound buffer we will be writing from
+			DSBUFFERDESC BufferDescription = {};
+			BufferDescription.dwSize = sizeof(BufferDescription);
+			BufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER;
 			BufferDescription.dwBufferBytes = BufferSize;
+			BufferDescription.lpwfxFormat = &WaveFormat;
+			LPDIRECTSOUNDBUFFER SecondaryBuffer;
 			
-			// Play the sound
+			if (SUCCEEDED(DirectSound->CreateSoundBuffer(&BufferDescription, &SecondaryBuffer, 0))) {
+				
+			}
 		}
-		
 	}
 }
 
@@ -168,13 +182,13 @@ ResizeDibSection(win32_Buffer* buffer, int Width, int Height)
 
 	// Allocate memory for our DIB section
 	int BitmapMemorySize = (buffer->Width * buffer->Height) * (buffer->BytesPerPixel);
-	buffer->BitmapMemory = VirtualAlloc(0, BitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
+	buffer->BitmapMemory = VirtualAlloc(0, BitmapMemorySize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 }
 
 // Have Windows output our buffer and scale it as appropriate
 static void
 DisplayDib(win32_Buffer* buffer,
-	   	   HDC DeviceContext, 
+	   	   HDC DeviceContext,
 		   int WinWidth, int WinHeight)
 {
 	StretchDIBits(DeviceContext,
@@ -206,7 +220,7 @@ WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 							   bool WasDown = ((lParam & (1 << 30)) != 0);
 							   bool IsDown = ((lParam & (1 << 31)) == 0);
 							   if (WasDown != IsDown) {
-							       if (VKCode == 'W') {  } 
+							       if (VKCode == 'W') {  }
 							       else if (VKCode == 'A') { }
 							       else if (VKCode == 'S') { }
 							       else if (VKCode == 'D') { }
@@ -246,7 +260,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 {
 	// Load XInput .dll
 	LoadXInput();
-	
+
 	// Set up WindowClass
 	WNDCLASSA WindowClass = {};
 	WindowClass.style = CS_VREDRAW | CS_HREDRAW;
@@ -263,18 +277,18 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 		HWND WindowHandle = CreateWindowExA( 0, WindowClass.lpszClassName, "Handmade Hero", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
 										 	 CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, hInstance, 0);
 		if (WindowHandle) {
-			Running = true; 
-			int xOffset = 0; int yOffset = 0; 
-			HDC DeviceContext = GetDC(WindowHandle); 
+			Running = true;
+			int xOffset = 0; int yOffset = 0;
+			HDC DeviceContext = GetDC(WindowHandle);
 
-			// 
-			InitDirectSound();
- 
+			// Initialize direct sound
+			InitDirectSound(WindowHandle, 48000, 48000 * sizeof(int16_t) * 2); // samples per second = 48000
+
 			// Message Loop
 			while (Running) {
 
 				// Message queue --> pull out one at a time --> translate & dispatch --> parse in Window Callback procedure
-				MSG Message; 
+				MSG Message;
 				while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE)) {
 					if (Message.message == WM_QUIT) { Running = false; }
 					TranslateMessage(&Message);
@@ -304,7 +318,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 // 						TODO: handle this case
 					}
 				}
-				
+
 				// TODO: some temp stuff for displaying our gradient
 				win32_WinDim Dimension = GetWinDim(WindowHandle);
 				RenderWeirdGradient(&GlobalBackBuffer, xOffset, yOffset);
