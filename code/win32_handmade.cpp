@@ -55,6 +55,7 @@ typedef DIRECT_SOUND_CREATE(direct_sound_create);
 // globals
 static bool Running;
 static win32_Buffer GlobalBackBuffer;
+static LPDIRECTSOUNDBUFFER SecondaryBuffer;
 
 // helper functions
 static win32_WinDim GetWinDim(HWND window) {
@@ -147,13 +148,12 @@ InitDirectSound(HWND Window, int32_t BufferSize, int32_t SamplesPerSecond) {
 			// Create a secondary buffer --> our actual sound buffer we will be writing from
 			DSBUFFERDESC BufferDescription = {};
 			BufferDescription.dwSize = sizeof(BufferDescription);
-			BufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER;
+			BufferDescription.dwFlags = 0;
 			BufferDescription.dwBufferBytes = BufferSize;
 			BufferDescription.lpwfxFormat = &WaveFormat;
-			LPDIRECTSOUNDBUFFER SecondaryBuffer;
 			
 			if (SUCCEEDED(DirectSound->CreateSoundBuffer(&BufferDescription, &SecondaryBuffer, 0))) {
-				
+				OutputDebugStringA("hi");
 			}
 		}
 	}
@@ -278,11 +278,21 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 										 	 CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, hInstance, 0);
 		if (WindowHandle) {
 			Running = true;
-			int xOffset = 0; int yOffset = 0;
+			int xOffset = 0; int yOffset = 0; // TODO: temp variables
 			HDC DeviceContext = GetDC(WindowHandle);
+
+			// TODO: temp vars for direct sound test
+			int samplesPerSecond = 48000;
+			int toneHertz = 256;
+			int runningSampleIndex = 0;
+			int bytesPerSample = sizeof(int16_t) * 2;
+			int secondaryBufferSize = samplesPerSecond * bytesPerSample;
+			int squareWavePeriod = samplesPerSecond / toneHertz;
+			int halfSquareWavePeriod = squareWavePeriod / 2;
 
 			// Initialize direct sound
 			InitDirectSound(WindowHandle, 48000, 48000 * sizeof(int16_t) * 2); // samples per second = 48000
+			SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
 			// Message Loop
 			while (Running) {
@@ -324,6 +334,47 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 				RenderWeirdGradient(&GlobalBackBuffer, xOffset, yOffset);
 				DisplayDib(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
 				++xOffset; ++yOffset;
+
+				// Direct Sound output test
+				DWORD playCursor; DWORD writeCursor;
+				if (SUCCEEDED(SecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor))) { // get positions of play and write cursors
+					
+					DWORD bytesToWrite;
+					DWORD byteToLock = (runningSampleIndex * bytesPerSample) % secondaryBufferSize; // convert samples to bytes and wrap
+					
+					// Get the number of bytes to write into the sound buffer
+					if (byteToLock > playCursor) { bytesToWrite = (secondaryBufferSize - byteToLock) + (playCursor); }
+					else                         { bytesToWrite = (playCursor - byteToLock); }
+					
+					// Need two regions because the region up to the play cursor could be in two chunks (we're using a circular buffer)
+					VOID* region1; DWORD region1Size;
+					VOID* region2; DWORD region2Size;
+					
+					if (SUCCEEDED(SecondaryBuffer->Lock(byteToLock, bytesToWrite, &region1, &region1Size, &region2, &region2Size, 0))) {
+					
+						int region1SampleCount = region1Size / bytesPerSample;
+						int16_t* sampleOut = (int16_t*) region1;
+						
+						// Loop through the first region
+						for (DWORD SampleIndex = 0; SampleIndex < region1SampleCount; ++SampleIndex) {
+							int16_t sampleValue = ((runningSampleIndex / halfSquareWavePeriod) % 2) ? 16000 : -16000;
+							*sampleOut = sampleValue; sampleOut += 1; // write out the left value
+							*sampleOut = sampleValue; sampleOut += 1; // write out the right value
+							runningSampleIndex += 1;
+						}
+						
+						sampleOut = (int16_t*) region2;
+						int region2SampleCount = region2Size / bytesPerSample;
+						
+						// Loop through the second region
+						for (DWORD SampleIndex = 0; SampleIndex < region2SampleCount; ++SampleIndex) {
+							int16_t sampleValue = ((runningSampleIndex / halfSquareWavePeriod) % 2) ? 16000 : -16000;
+							*sampleOut = sampleValue; sampleOut += 1; // write out the left value
+							*sampleOut = sampleValue; sampleOut += 1; // write out the right value
+							runningSampleIndex += 1;
+						}
+					}
+				}
 			}
 		}
 	}
