@@ -284,6 +284,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 			// TODO: temp vars for direct sound test
 			int samplesPerSecond = 48000;
 			int toneHertz = 256;
+			int16_t toneVolume = 6000;
 			int runningSampleIndex = 0;
 			int bytesPerSample = sizeof(int16_t) * 2;
 			int secondaryBufferSize = samplesPerSecond * bytesPerSample;
@@ -337,14 +338,15 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 
 				// Direct Sound output test
 				DWORD playCursor; DWORD writeCursor;
-				if (SUCCEEDED(SecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor))) { // get positions of play and write cursors
+			   	if (SUCCEEDED(SecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor))) { // get positions of play and write cursors
 					
 					DWORD bytesToWrite;
 					DWORD byteToLock = (runningSampleIndex * bytesPerSample) % secondaryBufferSize; // convert samples to bytes and wrap
 					
 					// Get the number of bytes to write into the sound buffer
-					if (byteToLock > playCursor) { bytesToWrite = (secondaryBufferSize - byteToLock) + (playCursor); }
-					else                         { bytesToWrite = (playCursor - byteToLock); }
+					if (byteToLock == playCursor)     { bytesToWrite = secondaryBufferSize; } // handle initial case where play and write cursors are the same 
+					else if (byteToLock > playCursor) { bytesToWrite = (secondaryBufferSize - byteToLock) + (playCursor); }
+					else                              { bytesToWrite = (playCursor - byteToLock); }
 					
 					// Need two regions because the region up to the play cursor could be in two chunks (we're using a circular buffer)
 					VOID* region1; DWORD region1Size;
@@ -357,7 +359,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 						
 						// Loop through the first region
 						for (DWORD SampleIndex = 0; SampleIndex < region1SampleCount; ++SampleIndex) {
-							int16_t sampleValue = ((runningSampleIndex / halfSquareWavePeriod) % 2) ? 16000 : -16000;
+							int16_t sampleValue = ((runningSampleIndex / halfSquareWavePeriod) % 2) ? toneVolume : -toneVolume;
 							*sampleOut = sampleValue; sampleOut += 1; // write out the left value
 							*sampleOut = sampleValue; sampleOut += 1; // write out the right value
 							runningSampleIndex += 1;
@@ -368,11 +370,14 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 						
 						// Loop through the second region
 						for (DWORD SampleIndex = 0; SampleIndex < region2SampleCount; ++SampleIndex) {
-							int16_t sampleValue = ((runningSampleIndex / halfSquareWavePeriod) % 2) ? 16000 : -16000;
+							int16_t sampleValue = ((runningSampleIndex / halfSquareWavePeriod) % 2) ? toneVolume : -toneVolume;
 							*sampleOut = sampleValue; sampleOut += 1; // write out the left value
 							*sampleOut = sampleValue; sampleOut += 1; // write out the right value
 							runningSampleIndex += 1;
 						}
+
+						// Unlock the buffer
+						SecondaryBuffer->Unlock(region1, region1Size, region2, region2Size);
 					}
 				}
 			}
