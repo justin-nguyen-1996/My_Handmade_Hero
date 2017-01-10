@@ -1,8 +1,13 @@
 
+// includes
 #include <windows.h>
 #include <stdint.h>
 #include <xinput.h>
 #include <dsound.h>
+#include <math.h> // TODO: temp include
+
+// defines
+#define PI 3.14159265359f
 
 // structs
 struct win32_Buffer {
@@ -17,6 +22,16 @@ struct win32_Buffer {
 struct win32_WinDim {
 	int Width;
 	int Height;
+};
+
+struct win32_SoundOutput {
+	int samplesPerSecond;
+	int toneHertz;
+	int16_t toneVolume;
+	uint32_t runningSampleIndex;
+	int bytesPerSample;
+	int wavePeriod;
+	int secondaryBufferSize;
 };
 
 /*******************************************/
@@ -52,10 +67,15 @@ static x_input_set_state* XInputSetState_ = XInputSetStateStub;                 
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
 /*******************************************/
+
 // globals
 static bool Running;
 static win32_Buffer GlobalBackBuffer;
 static LPDIRECTSOUNDBUFFER SecondaryBuffer;
+
+// typedefs
+typedef float real32;
+typedef double real64;
 
 // helper functions
 static win32_WinDim GetWinDim(HWND window) {
@@ -136,11 +156,11 @@ InitDirectSound(HWND Window, int32_t BufferSize, int32_t SamplesPerSecond) {
 				BufferDescription.dwSize = sizeof(BufferDescription);
 				BufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER;
 				LPDIRECTSOUNDBUFFER PrimaryBuffer;
-				
+
 				if (SUCCEEDED(DirectSound->CreateSoundBuffer(&BufferDescription, &PrimaryBuffer, 0))) {
-					
+
 					if (SUCCEEDED(PrimaryBuffer->SetFormat(&WaveFormat))) {
-						
+
 					}
 				}
 			}
@@ -151,7 +171,7 @@ InitDirectSound(HWND Window, int32_t BufferSize, int32_t SamplesPerSecond) {
 			BufferDescription.dwFlags = 0;
 			BufferDescription.dwBufferBytes = BufferSize;
 			BufferDescription.lpwfxFormat = &WaveFormat;
-			
+
 			if (SUCCEEDED(DirectSound->CreateSoundBuffer(&BufferDescription, &SecondaryBuffer, 0))) {
 				OutputDebugStringA("hi");
 			}
@@ -278,22 +298,25 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 										 	 CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, hInstance, 0);
 		if (WindowHandle) {
 			Running = true;
-			int xOffset = 0; int yOffset = 0; // TODO: temp variables
 			HDC DeviceContext = GetDC(WindowHandle);
 
-			// TODO: temp vars for direct sound test
-			int samplesPerSecond = 48000;
-			int toneHertz = 256;
-			int16_t toneVolume = 6000;
-			int runningSampleIndex = 0;
-			int bytesPerSample = sizeof(int16_t) * 2;
-			int secondaryBufferSize = samplesPerSecond * bytesPerSample;
-			int squareWavePeriod = samplesPerSecond / toneHertz;
-			int halfSquareWavePeriod = squareWavePeriod / 2;
+			// TODO: temp vars
+			int xOffset = 0; int yOffset = 0;
+
+			// TODO: temp vars
+			win32_SoundOutput soundOutput;
+			soundOutput.samplesPerSecond = 48000;
+			soundOutput.toneHertz = 256;
+			soundOutput.toneVolume = 3000;
+			soundOutput.runningSampleIndex = 0;
+			soundOutput.bytesPerSample = sizeof(int16_t) * 2;
+			soundOutput.wavePeriod = soundOutput.samplesPerSecond / soundOutput.toneHertz;
+			soundOutput.secondaryBufferSize = soundOutput.samplesPerSecond * soundOutput.bytesPerSample;
 
 			// Initialize direct sound
-			InitDirectSound(WindowHandle, 48000, 48000 * sizeof(int16_t) * 2); // samples per second = 48000
-			SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
+			InitDirectSound(WindowHandle, soundOutput.samplesPerSecond, soundOutput.secondaryBufferSize); // samples per second = 48000
+// 			SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
+			bool soundIsPlaying = false;
 
 			// Message Loop
 			while (Running) {
@@ -343,52 +366,74 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 				 *  --> Sound latency is the amount that will cause the frame's audio to coincide with the frame's image
 				 *  --> This latency is often difficult to ascertain due to unspecified bounds and crappy equipment latency
 				 */
-				
+
 				// Direct Sound output test
 				DWORD playCursor; DWORD writeCursor;
-			   	if (SUCCEEDED(SecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor))) { // get positions of play and write cursors, where to start writing
-					
+			   	if (SUCCEEDED(SecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor))) { // get locs of play and write cursors, where to start writing
+
 					DWORD bytesToWrite;
-					DWORD byteToLock = (runningSampleIndex * bytesPerSample) % secondaryBufferSize; // convert samples to bytes and wrap
-					
+					DWORD byteToLock = (soundOutput.runningSampleIndex * soundOutput.bytesPerSample) % soundOutput.secondaryBufferSize; // convert samples to bytes
+
 					// Get the number of bytes to write into the sound buffer, how much to write
-					if (byteToLock == playCursor)     { bytesToWrite = secondaryBufferSize; } // handle initial case where play and write cursors are the same 
-					else if (byteToLock > playCursor) { bytesToWrite = (secondaryBufferSize - byteToLock) + (playCursor); }
-					else                              { bytesToWrite = (playCursor - byteToLock); }
-					
+					if (byteToLock == playCursor)     { 
+						bytesToWrite = soundOutput.secondaryBufferSize; 
+					} // handle initial case where play and write cursors are the same
+					else if (byteToLock > playCursor) { 
+						bytesToWrite = soundOutput.secondaryBufferSize - byteToLock + playCursor; 
+					}
+					else                              { 
+						bytesToWrite = playCursor - byteToLock; 
+					}
+
 					// Need two regions because the region up to the play cursor could be in two chunks (we're using a circular buffer)
 					VOID* region1; DWORD region1Size;
 					VOID* region2; DWORD region2Size;
-					
+
 					// Need to lock the buffer to have DirectSound let us write into the buffer
 					if (SUCCEEDED(SecondaryBuffer->Lock(byteToLock, bytesToWrite, &region1, &region1Size, &region2, &region2Size, 0))) {
-					
-						int region1SampleCount = region1Size / bytesPerSample;
+
 						int16_t* sampleOut = (int16_t*) region1;
-						
+						int region1SampleCount = region1Size / soundOutput.bytesPerSample;
+
 						// Loop through the first region to write to the buffer, stereo sound is encoded as pairs of 16bit values (left, right)
 						for (DWORD SampleIndex = 0; SampleIndex < region1SampleCount; ++SampleIndex) {
-							int16_t sampleValue = ((runningSampleIndex / halfSquareWavePeriod) % 2) ? toneVolume : -toneVolume;
-							*sampleOut = sampleValue; sampleOut += 1; // write out the left value
-							*sampleOut = sampleValue; sampleOut += 1; // write out the right value
-							runningSampleIndex += 1;
+							real32 sinPosition = 2.0f * PI * (real32) soundOutput.runningSampleIndex / (real32) soundOutput.wavePeriod;
+							real32 sineValue = sinf(sinPosition);
+							int16_t sampleValue = (int16_t) (sineValue * soundOutput.toneVolume);
+// 							*sampleOut = sampleValue; sampleOut += 1; // write out the left value
+// 							*sampleOut = sampleValue; sampleOut += 1; // write out the right value
+// 							runningSampleIndex += 1;
+							*sampleOut++ = sampleValue;
+							*sampleOut++ = sampleValue;
+							++soundOutput.runningSampleIndex;
 						}
-						
+
 						sampleOut = (int16_t*) region2;
-						int region2SampleCount = region2Size / bytesPerSample;
-						
+						int region2SampleCount = region2Size / soundOutput.bytesPerSample;
+
 						// Loop through the second region to write to the buffer, stereo sound is encoded as pairs of 16bit values (left, right)
 						for (DWORD SampleIndex = 0; SampleIndex < region2SampleCount; ++SampleIndex) {
-							int16_t sampleValue = ((runningSampleIndex / halfSquareWavePeriod) % 2) ? toneVolume : -toneVolume;
-							*sampleOut = sampleValue; sampleOut += 1; // write out the left value
-							*sampleOut = sampleValue; sampleOut += 1; // write out the right value
-							runningSampleIndex += 1;
+							real32 sinPosition = 2.0f * PI * (real32) soundOutput.runningSampleIndex / (real32) soundOutput.wavePeriod;
+							real32 sineValue = sinf(sinPosition);
+							int16_t sampleValue = (int16_t) (sineValue * soundOutput.toneVolume);
+// 							*sampleOut = sampleValue; sampleOut += 1; // write out the left value
+// 							*sampleOut = sampleValue; sampleOut += 1; // write out the right value
+// 							runningSampleIndex += 1;
+							*sampleOut++ = sampleValue;
+							*sampleOut++ = sampleValue;
+							++soundOutput.runningSampleIndex;
 						}
 
 						// Unlock the buffer --> done writing so continue playing again
 						SecondaryBuffer->Unlock(region1, region1Size, region2, region2Size);
 					}
 				}
+
+				if (! soundIsPlaying) {
+					SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
+					soundIsPlaying = true;
+				}
+				
 			}
 		}
 	}
