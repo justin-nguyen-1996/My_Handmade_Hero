@@ -336,14 +336,22 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 				DisplayDib(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
 				++xOffset; ++yOffset;
 
+				/*
+				 * Note on audio latency:
+				 *  --> Not caused by size of the buffer
+				 *  --> Caused by how far ahead of the play cursor you write
+				 *  --> Sound latency is the amount that will cause the frame's audio to coincide with the frame's image
+				 *  --> This latency is often difficult to ascertain due to unspecified bounds and crappy equipment latency
+				 */
+				
 				// Direct Sound output test
 				DWORD playCursor; DWORD writeCursor;
-			   	if (SUCCEEDED(SecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor))) { // get positions of play and write cursors
+			   	if (SUCCEEDED(SecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor))) { // get positions of play and write cursors, where to start writing
 					
 					DWORD bytesToWrite;
 					DWORD byteToLock = (runningSampleIndex * bytesPerSample) % secondaryBufferSize; // convert samples to bytes and wrap
 					
-					// Get the number of bytes to write into the sound buffer
+					// Get the number of bytes to write into the sound buffer, how much to write
 					if (byteToLock == playCursor)     { bytesToWrite = secondaryBufferSize; } // handle initial case where play and write cursors are the same 
 					else if (byteToLock > playCursor) { bytesToWrite = (secondaryBufferSize - byteToLock) + (playCursor); }
 					else                              { bytesToWrite = (playCursor - byteToLock); }
@@ -352,12 +360,13 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 					VOID* region1; DWORD region1Size;
 					VOID* region2; DWORD region2Size;
 					
+					// Need to lock the buffer to have DirectSound let us write into the buffer
 					if (SUCCEEDED(SecondaryBuffer->Lock(byteToLock, bytesToWrite, &region1, &region1Size, &region2, &region2Size, 0))) {
 					
 						int region1SampleCount = region1Size / bytesPerSample;
 						int16_t* sampleOut = (int16_t*) region1;
 						
-						// Loop through the first region
+						// Loop through the first region to write to the buffer, stereo sound is encoded as pairs of 16bit values (left, right)
 						for (DWORD SampleIndex = 0; SampleIndex < region1SampleCount; ++SampleIndex) {
 							int16_t sampleValue = ((runningSampleIndex / halfSquareWavePeriod) % 2) ? toneVolume : -toneVolume;
 							*sampleOut = sampleValue; sampleOut += 1; // write out the left value
@@ -368,7 +377,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 						sampleOut = (int16_t*) region2;
 						int region2SampleCount = region2Size / bytesPerSample;
 						
-						// Loop through the second region
+						// Loop through the second region to write to the buffer, stereo sound is encoded as pairs of 16bit values (left, right)
 						for (DWORD SampleIndex = 0; SampleIndex < region2SampleCount; ++SampleIndex) {
 							int16_t sampleValue = ((runningSampleIndex / halfSquareWavePeriod) % 2) ? toneVolume : -toneVolume;
 							*sampleOut = sampleValue; sampleOut += 1; // write out the left value
@@ -376,7 +385,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 							runningSampleIndex += 1;
 						}
 
-						// Unlock the buffer
+						// Unlock the buffer --> done writing so continue playing again
 						SecondaryBuffer->Unlock(region1, region1Size, region2, region2Size);
 					}
 				}
