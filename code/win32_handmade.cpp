@@ -5,6 +5,7 @@
 #include <xinput.h>
 #include <dsound.h>
 #include <math.h> // TODO: temp include
+#include <stdio.h>
 
 // Defines
 #define PI 3.14159265359f
@@ -20,7 +21,6 @@ struct win32_Buffer {
 	int Width;
 	int Height;
 	int Pitch;
-	int BytesPerPixel;
 };
 
 struct win32_WinDim {
@@ -37,6 +37,7 @@ struct win32_SoundInfo {
 	int wavePeriod;
 	int secondaryBufferSize;
 	real32 tSine;
+	int latencySampleCount;
 };
 
 // Globals
@@ -44,6 +45,7 @@ static bool Running;
 static win32_Buffer GlobalBackBuffer;
 static LPDIRECTSOUNDBUFFER SecondaryBuffer;
 int xOffset = 0; int yOffset = 0; // TODO: temp vars
+win32_SoundInfo soundInfo; // TODO: temp var
 
 /*******************************************/
 
@@ -80,7 +82,7 @@ typedef DIRECT_SOUND_CREATE(direct_sound_create);
 /*******************************************/
 
 // Helper functions
-static win32_WinDim GetWinDim(HWND window) {
+win32_WinDim GetWinDim(HWND window) {
 	win32_WinDim res;
    	RECT ClientRect;
     GetClientRect(window, &ClientRect);
@@ -93,10 +95,6 @@ static win32_WinDim GetWinDim(HWND window) {
 static void
 RenderWeirdGradient(win32_Buffer* buffer, int xOffset, int yOffset)
 {
-	int Width = buffer->Width;
-	int Height = buffer->Height;
-	int BytesPerPixel = buffer->BytesPerPixel;
-
 	uint8_t* row = (uint8_t*) buffer->BitmapMemory;
 	for (int y = 0; y < buffer->Height; ++y) {
 
@@ -107,8 +105,7 @@ RenderWeirdGradient(win32_Buffer* buffer, int xOffset, int yOffset)
 			uint8_t blue = (x + xOffset);
 			uint8_t green = (y + yOffset);
 			uint8_t red;
-			*pixel = ((green << 8) | blue);
-			pixel += 1;
+			*pixel++ = ((green << 8) | blue);
 		}
 
 		row += buffer->Pitch;
@@ -119,17 +116,19 @@ RenderWeirdGradient(win32_Buffer* buffer, int xOffset, int yOffset)
 static void
 LoadXInput() {
 	HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll"); // load the .dll into our virtual address space, look for import libraries
-	if (! XInputLibrary) { HMODULE XInputLibrary = LoadLibraryA("xinput1_3.dll"); }
+	if (! XInputLibrary) { XInputLibrary = LoadLibraryA("xinput9_1_0.dll"); }
+	if (! XInputLibrary) { XInputLibrary = LoadLibraryA("xinput1_3.dll"); }
 	if (XInputLibrary) {
 		XInputGetState = (x_input_get_state*) GetProcAddress(XInputLibrary, "XInputGetState"); // find the desired functions in the specified library
+		if (! XInputGetState) { XInputGetState = XInputGetStateStub; }
 		XInputSetState = (x_input_set_state*) GetProcAddress(XInputLibrary, "XInputSetState"); // Windows normally uses these addresses to patch up you code
-																							   // by filling in memory addresses with pointers
+		if (! XInputSetState) { XInputSetState = XInputSetStateStub; }
 	}
 }
 
 // Initialize Direct Sound (DSound)
 static void
-InitDirectSound(HWND Window, int32_t BufferSize, int32_t SamplesPerSecond) {
+InitDirectSound(HWND Window, int32_t SamplesPerSecond, int32_t BufferSize) {
 	// Load the library
 	HMODULE SoundLibrary = LoadLibraryA("dsound.dll");
 
@@ -147,7 +146,7 @@ InitDirectSound(HWND Window, int32_t BufferSize, int32_t SamplesPerSecond) {
 			WaveFormat.nChannels = 2;
 			WaveFormat.nSamplesPerSec = SamplesPerSecond;
 			WaveFormat.wBitsPerSample = 16;
-			WaveFormat.nBlockAlign = WaveFormat.nChannels * WaveFormat.wBitsPerSample / 8;
+			WaveFormat.nBlockAlign = (WaveFormat.nChannels * WaveFormat.wBitsPerSample) / 8;
 			WaveFormat.nAvgBytesPerSec = WaveFormat.nBlockAlign * WaveFormat.nSamplesPerSec;
 			WaveFormat.cbSize = 0;
 
@@ -176,7 +175,7 @@ InitDirectSound(HWND Window, int32_t BufferSize, int32_t SamplesPerSecond) {
 			BufferDescription.lpwfxFormat = &WaveFormat;
 
 			if (SUCCEEDED(DirectSound->CreateSoundBuffer(&BufferDescription, &SecondaryBuffer, 0))) {
-				OutputDebugStringA("hi");
+				
 			}
 		}
 	}
@@ -232,9 +231,9 @@ ResizeDibSection(win32_Buffer* buffer, int Width, int Height)
 	if (buffer->BitmapMemory) { VirtualFree(buffer->BitmapMemory, 0, MEM_RELEASE); }
 
 	// Setup the buffer
+	int BytesPerPixel = 4;
 	buffer->Width = Width; buffer->Height = Height;
-	buffer->BytesPerPixel = 4;
-	buffer->Pitch = buffer->Width * buffer->BytesPerPixel;
+	buffer->Pitch = Width * BytesPerPixel;
 
 	// Setup the bit map info header
 	buffer->BitmapInfo.bmiHeader.biSize = sizeof(buffer->BitmapInfo.bmiHeader);
@@ -245,7 +244,7 @@ ResizeDibSection(win32_Buffer* buffer, int Width, int Height)
 	buffer->BitmapInfo.bmiHeader.biCompression = BI_RGB;
 
 	// Allocate memory for our DIB section
-	int BitmapMemorySize = (buffer->Width * buffer->Height) * (buffer->BytesPerPixel);
+	int BitmapMemorySize = (buffer->Width * buffer->Height) * (BytesPerPixel);
 	buffer->BitmapMemory = VirtualAlloc(0, BitmapMemorySize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 }
 
@@ -264,7 +263,7 @@ DisplayDib(win32_Buffer* buffer,
 				  SRCCOPY);
 }
 
-// Window Callback
+// Window Callback Procedure
 LRESULT CALLBACK
 WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
@@ -283,36 +282,33 @@ WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 		case WM_KEYUP:       { uint32_t VKCode = wParam; // virtual key code
 							   bool WasDown = ((lParam & (1 << 30)) != 0);
 							   bool IsDown = ((lParam & (1 << 31)) == 0);
-							   if (WasDown != IsDown) {
-							       if (VKCode == 'W') { yOffset += 1; }
-							       else if (VKCode == 'A') { xOffset += 1; }
+// 							   if (WasDown != IsDown) {
+							       if (VKCode == 'W') { yOffset += 100; }
+							       else if (VKCode == 'A') { xOffset += 100; }
 							       else if (VKCode == 'S') { }
 							       else if (VKCode == 'D') { }
 							       else if (VKCode == 'Q') { }
 							       else if (VKCode == 'E') { }
-							       else if (VKCode == VK_UP) { }
+							       else if (VKCode == VK_UP) { soundInfo.toneHertz += 30;
+								  							   soundInfo.wavePeriod = soundInfo.samplesPerSecond/soundInfo.toneHertz; }
 							       else if (VKCode == VK_LEFT) { }
 							       else if (VKCode == VK_DOWN) { }
 							       else if (VKCode == VK_RIGHT) { }
 							       else if (VKCode == VK_ESCAPE) { }
-							       else if (VKCode == VK_SPACE) { }}
+							       else if (VKCode == VK_SPACE) { }
+// 	 							 }
 							   bool AltKeyDown = lParam & (1 << 29);
 							   if ((VKCode == VK_F4)  &&  AltKeyDown) { Running = false; }
 							 } break;
 
 		case WM_PAINT:       { PAINTSTRUCT Paint;
 							   HDC DeviceContext = BeginPaint(hwnd, &Paint);
-							   int X = Paint.rcPaint.left;
-							   int Y = Paint.rcPaint.top;
-							   int W = Paint.rcPaint.right - Paint.rcPaint.left;
-							   int H = Paint.rcPaint.bottom - Paint.rcPaint.top;
 							   win32_WinDim Dimension = GetWinDim(hwnd);
 							   DisplayDib(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height); // display our buffer
 							   EndPaint(hwnd, &Paint);
 							 } break;
 
-		default:               // OutputDebugStringA("DEFAULT\n");
-							   res = DefWindowProc(hwnd, Msg, wParam, lParam); break;
+		default:               res = DefWindowProcA(hwnd, Msg, wParam, lParam); break;
 	}
 
 	return res;
@@ -322,22 +318,23 @@ WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 int CALLBACK
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
+	// Some basic setup
 	// Load XInput .dll
 	LoadXInput();
 
 	// Set up WindowClass
 	WNDCLASSA WindowClass = {};
-	WindowClass.style = CS_VREDRAW | CS_HREDRAW;
+	WindowClass.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
 	WindowClass.lpfnWndProc = WindowProc;
 	WindowClass.hInstance = hInstance;
 // 	WindowClass.hIcon = ;
 	WindowClass.lpszClassName = "Handmade Hero Window Class";
-
+	
 	// Set the size of our buffer
-   	ResizeDibSection(&GlobalBackBuffer, 1280, 720);
+	ResizeDibSection(&GlobalBackBuffer, 1280, 720);
 
 	// Register the window and create the window
-	if (RegisterClass(&WindowClass)) {
+	if (RegisterClassA(&WindowClass)) {
 		HWND WindowHandle = CreateWindowExA( 0, WindowClass.lpszClassName, "Handmade Hero", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
 										 	 CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, hInstance, 0);
 		if (WindowHandle) {
@@ -345,18 +342,19 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 			HDC DeviceContext = GetDC(WindowHandle);
 
 			// TODO: temp vars
-			win32_SoundInfo soundInfo = {};
+			soundInfo = {};
 			soundInfo.samplesPerSecond = 48000;
 			soundInfo.toneHertz = 256;
 			soundInfo.toneVolume = 3000;
 			soundInfo.runningSampleIndex = 0;
+			soundInfo.latencySampleCount = soundInfo.samplesPerSecond / 15;
 			soundInfo.bytesPerSample = sizeof(int16_t) * 2;
 			soundInfo.wavePeriod = soundInfo.samplesPerSecond / soundInfo.toneHertz;
 			soundInfo.secondaryBufferSize = soundInfo.samplesPerSecond * soundInfo.bytesPerSample;
 
 			// Initialize direct sound
 			InitDirectSound(WindowHandle, soundInfo.samplesPerSecond, soundInfo.secondaryBufferSize);
-			FillSoundBuffer(&soundInfo, 0, soundInfo.secondaryBufferSize); // TODO: fix latency (currently one full buffer of latency)
+			FillSoundBuffer(&soundInfo, 0, soundInfo.latencySampleCount * soundInfo.bytesPerSample);
 			SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
 			// Message Loop
@@ -415,9 +413,12 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 					// Get the byte to lock, convert samples to bytes and wrap
 					DWORD byteToLock = (soundInfo.runningSampleIndex * soundInfo.bytesPerSample) % soundInfo.secondaryBufferSize;
 
+					// Get the target cursor position
+					DWORD targetCursor = (playCursor + (soundInfo.latencySampleCount * soundInfo.bytesPerSample))   %   soundInfo.secondaryBufferSize;
+
 					// Get the number of bytes to write into the sound buffer, how much to write
-					if (byteToLock > playCursor) { bytesToWrite = soundInfo.secondaryBufferSize - byteToLock + playCursor; }
-					else                         { bytesToWrite = playCursor - byteToLock; }
+					if (byteToLock > targetCursor) { bytesToWrite = soundInfo.secondaryBufferSize - byteToLock + targetCursor; }
+					else                           { bytesToWrite = targetCursor - byteToLock; }
 
 					// Fill the sound buffer with data
 					FillSoundBuffer(&soundInfo, byteToLock, bytesToWrite);
