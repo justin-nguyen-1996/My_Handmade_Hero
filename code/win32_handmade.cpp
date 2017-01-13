@@ -5,7 +5,6 @@
 #include <xinput.h>
 #include <dsound.h>
 #include <math.h> // TODO: temp include
-#include <stdio.h>
 
 // Defines
 #define PI 3.14159265359f
@@ -274,7 +273,7 @@ WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 		case WM_SIZE:          break;
 		case WM_CLOSE:         Running = false; break;
 		case WM_DESTROY:       Running = false; break;
-		case WM_ACTIVATEAPP:   OutputDebugStringA("WM_ACTIVATEAPP\n"); break;
+		case WM_ACTIVATEAPP:   break;
 
 		case WM_SYSKEYDOWN:
 		case WM_SYSKEYUP:
@@ -319,6 +318,11 @@ int CALLBACK
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	// Some basic setup
+	// Get the system's performance frequency for profiling purposes
+	LARGE_INTEGER PerformanceFreqRes;
+	QueryPerformanceFrequency(&PerformanceFreqRes);
+	int64_t PerformanceFreq = PerformanceFreqRes.QuadPart;
+	
 	// Load XInput .dll
 	LoadXInput();
 
@@ -341,7 +345,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 			Running = true;
 			HDC DeviceContext = GetDC(WindowHandle);
 
-			// TODO: temp vars
+			// TODO: temp sound vars
 			soundInfo = {};
 			soundInfo.samplesPerSecond = 48000;
 			soundInfo.toneHertz = 256;
@@ -357,6 +361,11 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 			FillSoundBuffer(&soundInfo, 0, soundInfo.latencySampleCount * soundInfo.bytesPerSample);
 			SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
+			// Start our performance query
+			LARGE_INTEGER beginCounter;
+			QueryPerformanceCounter(&beginCounter);
+			uint64_t beginCycleCount = __rdtsc();
+			
 			// Message Loop
 			while (Running) {
 
@@ -394,8 +403,11 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 					}
 				}
 
+				
 				// TODO: some temp stuff for displaying our gradient
+				win32_WinDim Dimension = GetWinDim(WindowHandle);
 				RenderWeirdGradient(&GlobalBackBuffer, xOffset, yOffset);
+				DisplayDib(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
 
 				/*
 				 * Note on audio latency:
@@ -423,9 +435,23 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 					// Fill the sound buffer with data
 					FillSoundBuffer(&soundInfo, byteToLock, bytesToWrite);
 				}
+				
+				// End our performance query
+				uint64_t endCycleCount = __rdtsc();
+				LARGE_INTEGER endCounter;
+				QueryPerformanceCounter(&endCounter);
+				
+				// Calculate the timing differences and output as debug info
+				int64_t cycleDiff = endCycleCount - beginCycleCount;
+				int64_t counterDiff = endCounter.QuadPart - beginCounter.QuadPart;
+				int32_t msPerFrame = (1000 * counterDiff) / PerformanceFreq; // (num counter ticks) divided by (num ticks per sec) --> total secs that passed
+				int32_t FPS = PerformanceFreq / counterDiff;
+				int32_t MegaCyclesPerFrame = (int32_t) cycleDiff / (1000 * 1000);
+				char buffer[256]; wsprintf(buffer, "Ms/frame: %d fps: %d cycles passed: %d\n", msPerFrame, FPS, MegaCyclesPerFrame); OutputDebugStringA(buffer);
 
-				win32_WinDim Dimension = GetWinDim(WindowHandle);
-				DisplayDib(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
+				// Reset the counters
+				beginCounter = endCounter;
+				beginCycleCount = endCycleCount;
 			}
 		}
 	}
