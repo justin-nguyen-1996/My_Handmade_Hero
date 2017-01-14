@@ -81,7 +81,7 @@ typedef DIRECT_SOUND_CREATE(direct_sound_create);
 /*******************************************/
 
 // Helper functions
-win32_WinDim GetWinDim(HWND window) {
+win32_WinDim Win32_GetWinDim(HWND window) {
 	win32_WinDim res;
    	RECT ClientRect;
     GetClientRect(window, &ClientRect);
@@ -111,9 +111,9 @@ RenderWeirdGradient(win32_Buffer* buffer, int xOffset, int yOffset)
 	}
 }
 
-// Manually load the dll (helps with compatibility)
+// Manually load the XInput dll (helps with compatibility)
 static void
-LoadXInput() {
+Win32_LoadXInput() {
 	HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll"); // load the .dll into our virtual address space, look for import libraries
 	if (! XInputLibrary) { XInputLibrary = LoadLibraryA("xinput9_1_0.dll"); }
 	if (! XInputLibrary) { XInputLibrary = LoadLibraryA("xinput1_3.dll"); }
@@ -127,7 +127,7 @@ LoadXInput() {
 
 // Initialize Direct Sound (DSound)
 static void
-InitDirectSound(HWND Window, int32_t SamplesPerSecond, int32_t BufferSize) {
+Win32_InitDirectSound(HWND Window, int32_t SamplesPerSecond, int32_t BufferSize) {
 	// Load the library
 	HMODULE SoundLibrary = LoadLibraryA("dsound.dll");
 
@@ -182,7 +182,7 @@ InitDirectSound(HWND Window, int32_t SamplesPerSecond, int32_t BufferSize) {
 
 // Fill the sound buffer
 static void
-FillSoundBuffer(win32_SoundInfo* soundInfo, DWORD byteToLock, DWORD bytesToWrite) {
+Win32_FillSoundBuffer(win32_SoundInfo* soundInfo, DWORD byteToLock, DWORD bytesToWrite) {
 	// Need two regions because the region up to the play cursor could be in two chunks (we're using a circular buffer)
 	VOID* region1; DWORD region1Size;
 	VOID* region2; DWORD region2Size;
@@ -224,7 +224,7 @@ FillSoundBuffer(win32_SoundInfo* soundInfo, DWORD byteToLock, DWORD bytesToWrite
 // Create the buffer that we will have Windows display for us
 // Device Independent Bitmap
 static void
-ResizeDibSection(win32_Buffer* buffer, int Width, int Height)
+Win32_ResizeDibSection(win32_Buffer* buffer, int Width, int Height)
 {
 	// Free our old DIB section if we ask for a new one
 	if (buffer->BitmapMemory) { VirtualFree(buffer->BitmapMemory, 0, MEM_RELEASE); }
@@ -247,9 +247,9 @@ ResizeDibSection(win32_Buffer* buffer, int Width, int Height)
 	buffer->BitmapMemory = VirtualAlloc(0, BitmapMemorySize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 }
 
-// Have Windows output our buffer and scale it as appropriate
+// Have Windows display our buffer and scale it as appropriate
 static void
-DisplayDib(win32_Buffer* buffer,
+Win32_DisplayBuffer(win32_Buffer* buffer,
 	   	   HDC DeviceContext,
 		   int WinWidth, int WinHeight)
 {
@@ -264,7 +264,7 @@ DisplayDib(win32_Buffer* buffer,
 
 // Window Callback Procedure
 LRESULT CALLBACK
-WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
+Win32_WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
 	LRESULT res = 0;
 
@@ -302,8 +302,8 @@ WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 
 		case WM_PAINT:       { PAINTSTRUCT Paint;
 							   HDC DeviceContext = BeginPaint(hwnd, &Paint);
-							   win32_WinDim Dimension = GetWinDim(hwnd);
-							   DisplayDib(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height); // display our buffer
+							   win32_WinDim Dimension = Win32_GetWinDim(hwnd);
+							   Win32_DisplayBuffer(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height); // display our buffer
 							   EndPaint(hwnd, &Paint);
 							 } break;
 
@@ -324,18 +324,18 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 	int64_t PerformanceFreq = PerformanceFreqRes.QuadPart;
 	
 	// Load XInput .dll
-	LoadXInput();
+	Win32_LoadXInput();
 
 	// Set up WindowClass
 	WNDCLASSA WindowClass = {};
 	WindowClass.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
-	WindowClass.lpfnWndProc = WindowProc;
+	WindowClass.lpfnWndProc = Win32_WindowProc;
 	WindowClass.hInstance = hInstance;
 // 	WindowClass.hIcon = ;
 	WindowClass.lpszClassName = "Handmade Hero Window Class";
 	
 	// Set the size of our buffer
-	ResizeDibSection(&GlobalBackBuffer, 1280, 720);
+	Win32_ResizeDibSection(&GlobalBackBuffer, 1280, 720);
 
 	// Register the window and create the window
 	if (RegisterClassA(&WindowClass)) {
@@ -357,8 +357,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 			soundInfo.secondaryBufferSize = soundInfo.samplesPerSecond * soundInfo.bytesPerSample;
 
 			// Initialize direct sound
-			InitDirectSound(WindowHandle, soundInfo.samplesPerSecond, soundInfo.secondaryBufferSize);
-			FillSoundBuffer(&soundInfo, 0, soundInfo.latencySampleCount * soundInfo.bytesPerSample);
+			Win32_InitDirectSound(WindowHandle, soundInfo.samplesPerSecond, soundInfo.secondaryBufferSize);
+			Win32_FillSoundBuffer(&soundInfo, 0, soundInfo.latencySampleCount * soundInfo.bytesPerSample);
 			SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
 			// Start our performance query
@@ -405,9 +405,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 
 				
 				// TODO: some temp stuff for displaying our gradient
-				win32_WinDim Dimension = GetWinDim(WindowHandle);
+				win32_WinDim Dimension = Win32_GetWinDim(WindowHandle);
 				RenderWeirdGradient(&GlobalBackBuffer, xOffset, yOffset);
-				DisplayDib(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
+				Win32_DisplayBuffer(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
 
 				/*
 				 * Note on audio latency:
@@ -433,7 +433,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 					else                           { bytesToWrite = targetCursor - byteToLock; }
 
 					// Fill the sound buffer with data
-					FillSoundBuffer(&soundInfo, byteToLock, bytesToWrite);
+					Win32_FillSoundBuffer(&soundInfo, byteToLock, bytesToWrite);
 				}
 				
 				// End our performance query
