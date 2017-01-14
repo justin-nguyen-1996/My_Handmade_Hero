@@ -5,6 +5,7 @@
 #include <xinput.h>
 #include <dsound.h>
 #include <math.h> // TODO: temp include
+#include "handmade.cpp"
 
 // Defines
 #define PI 3.14159265359f
@@ -88,27 +89,6 @@ win32_WinDim Win32_GetWinDim(HWND window) {
 	res.Width = ClientRect.right - ClientRect.left;
 	res.Height = ClientRect.bottom - ClientRect.top;
 	return res;
-}
-
-// Test code for displaying a gradient
-static void
-RenderWeirdGradient(win32_Buffer* buffer, int xOffset, int yOffset)
-{
-	uint8_t* row = (uint8_t*) buffer->BitmapMemory;
-	for (int y = 0; y < buffer->Height; ++y) {
-
-		uint32_t* pixel = (uint32_t*) row;
-		for (int x = 0; x < buffer->Width; ++x) {
-			//   Memory:   BB GG RR XX
-			//   Register: XX RR GG BB
-			uint8_t blue = (x + xOffset);
-			uint8_t green = (y + yOffset);
-			uint8_t red;
-			*pixel++ = ((green << 8) | blue);
-		}
-
-		row += buffer->Pitch;
-	}
 }
 
 // Manually load the XInput dll (helps with compatibility)
@@ -249,9 +229,7 @@ Win32_ResizeDibSection(win32_Buffer* buffer, int Width, int Height)
 
 // Have Windows display our buffer and scale it as appropriate
 static void
-Win32_DisplayBuffer(win32_Buffer* buffer,
-	   	   HDC DeviceContext,
-		   int WinWidth, int WinHeight)
+Win32_DisplayBuffer(win32_Buffer* buffer, HDC DeviceContext, int WinWidth, int WinHeight)
 {
 	StretchDIBits(DeviceContext,
 				  0, 0, WinWidth, WinHeight,
@@ -405,8 +383,14 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 
 				
 				// TODO: some temp stuff for displaying our gradient
+				gameBuffer buffer = {};
+				buffer.BitmapMemory = GlobalBackBuffer.BitmapMemory;
+				buffer.Width = GlobalBackBuffer.Width;
+				buffer.Height = GlobalBackBuffer.Height;
+				buffer.Pitch = GlobalBackBuffer.Pitch;
+				
+				gameUpdateAndRender(&buffer, xOffset, yOffset);
 				win32_WinDim Dimension = Win32_GetWinDim(WindowHandle);
-				RenderWeirdGradient(&GlobalBackBuffer, xOffset, yOffset);
 				Win32_DisplayBuffer(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
 
 				/*
@@ -447,7 +431,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 				int32_t msPerFrame = (1000 * counterDiff) / PerformanceFreq; // (num counter ticks) divided by (num ticks per sec) --> total secs that passed
 				int32_t FPS = PerformanceFreq / counterDiff;
 				int32_t MegaCyclesPerFrame = (int32_t) cycleDiff / (1000 * 1000);
-				char buffer[256]; wsprintf(buffer, "Ms/frame: %d fps: %d cycles passed: %d\n", msPerFrame, FPS, MegaCyclesPerFrame); OutputDebugStringA(buffer);
+// 				char buffer[256]; wsprintf(buffer, "Ms/frame: %d fps: %d cycles passed: %d\n", msPerFrame, FPS, MegaCyclesPerFrame); OutputDebugStringA(buffer);
 
 				// Reset the counters
 				beginCounter = endCounter;
