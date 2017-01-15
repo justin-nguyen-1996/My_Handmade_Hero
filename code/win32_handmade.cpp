@@ -12,6 +12,8 @@ typedef double real64;
 #include <xinput.h>
 #include <dsound.h>
 #include <math.h> // TODO: temp include
+#include <malloc.h> // TODO: temp include
+#include "handmade.h"
 #include "handmade.cpp"
 
 // Structs
@@ -162,7 +164,7 @@ Win32_InitDirectSound(HWND Window, int32_t SamplesPerSecond, int32_t BufferSize)
 
 // Fill the sound buffer
 static void
-Win32_FillSoundBuffer(win32_SoundInfo* soundInfo, DWORD byteToLock, DWORD bytesToWrite) {
+Win32_FillSoundBuffer(win32_SoundInfo* soundInfo, DWORD byteToLock, DWORD bytesToWrite, GameSoundBuffer* soundBuffer) {
 	// Need two regions because the region up to the play cursor could be in two chunks (we're using a circular buffer)
 	VOID* region1; DWORD region1Size;
 	VOID* region2; DWORD region2Size;
@@ -170,32 +172,50 @@ Win32_FillSoundBuffer(win32_SoundInfo* soundInfo, DWORD byteToLock, DWORD bytesT
 	// Need to lock the buffer to have DirectSound let us write into the buffer
 	if (SUCCEEDED(SecondaryBuffer->Lock(byteToLock, bytesToWrite, &region1, &region1Size, &region2, &region2Size, 0))) {
 
-		int16_t* sampleOut = (int16_t*) region1;
 		int region1SampleCount = region1Size / soundInfo->bytesPerSample;
+		int16_t* destSample = (int16_t*) region1;
+		int16_t* srcSample = soundBuffer->samples;
 
 		// Loop through the first region to write to the buffer, stereo sound is encoded as pairs of 16bit values (left, right)
 		for (DWORD SampleIndex = 0; SampleIndex < region1SampleCount; ++SampleIndex) {
-			real32 sineValue = sinf(soundInfo->tSine);
-			int16_t sampleValue = (int16_t) (sineValue * soundInfo->toneVolume);
-			*sampleOut++ = sampleValue;
-			*sampleOut++ = sampleValue;
-			soundInfo->tSine += 2.0f * PI * 1.0f / (real32) soundInfo->wavePeriod;
+			*destSample++ = *srcSample++;
+			*destSample++ = *srcSample++;
 			++soundInfo->runningSampleIndex;
 		}
 
-		sampleOut = (int16_t*) region2;
 		int region2SampleCount = region2Size / soundInfo->bytesPerSample;
+		destSample = (int16_t*) region2;
 
 		// Loop through the second region to write to the buffer, stereo sound is encoded as pairs of 16bit values (left, right)
 		for (DWORD SampleIndex = 0; SampleIndex < region2SampleCount; ++SampleIndex) {
-			real32 sineValue = sinf(soundInfo->tSine);
-			int16_t sampleValue = (int16_t) (sineValue * soundInfo->toneVolume);
-			*sampleOut++ = sampleValue;
-			*sampleOut++ = sampleValue;
-			soundInfo->tSine += 2.0f * PI * 1.0f / (real32) soundInfo->wavePeriod;
+			*destSample++ = *srcSample++;
+			*destSample++ = *srcSample++;
 			++soundInfo->runningSampleIndex;
 		}
 
+		// Unlock the buffer --> done writing so continue playing again
+		SecondaryBuffer->Unlock(region1, region1Size, region2, region2Size);
+	}
+}
+
+// Clear the sound buffer
+static void 
+Win32_ClearBuffer(win32_SoundInfo* soundBuffer) {
+	
+	// Need two regions because the region up to the play cursor could be in two chunks (we're using a circular buffer)
+	VOID* region1; DWORD region1Size;
+	VOID* region2; DWORD region2Size;
+	
+	if (SUCCEEDED(SecondaryBuffer->Lock(0, soundBuffer->secondaryBufferSize, &region1, &region1Size, &region2, &region2Size, 0))) {
+		
+		// Loop through the first region to write to the buffer, stereo sound is encoded as pairs of 16bit values (left, right)
+		uint8_t* destSample = (uint8_t*) region1;
+		for (DWORD ByteIndex = 0; ByteIndex < region1Size; ++ByteIndex) { *destSample++ = 0; }
+		
+		// Loop through the second region to write to the buffer, stereo sound is encoded as pairs of 16bit values (left, right)
+		destSample = (uint8_t*) region2;
+		for (DWORD ByteIndex = 0; ByteIndex < region2Size; ++ByteIndex) { *destSample++ = 0; }
+		
 		// Unlock the buffer --> done writing so continue playing again
 		SecondaryBuffer->Unlock(region1, region1Size, region2, region2Size);
 	}
@@ -209,7 +229,7 @@ Win32_ResizeDibSection(win32_Buffer* buffer, int Width, int Height)
 	// Free our old DIB section if we ask for a new one
 	if (buffer->BitmapMemory) { VirtualFree(buffer->BitmapMemory, 0, MEM_RELEASE); }
 
-	// Setup the buffer
+	// Setup the image buffer
 	int BytesPerPixel = 4;
 	buffer->Width = Width; buffer->Height = Height;
 	buffer->Pitch = Width * BytesPerPixel;
@@ -328,7 +348,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 			soundInfo.samplesPerSecond = 48000;
 			soundInfo.toneHertz = 256;
 			soundInfo.toneVolume = 3000;
-			soundInfo.runningSampleIndex = 0;
 			soundInfo.latencySampleCount = soundInfo.samplesPerSecond / 15;
 			soundInfo.bytesPerSample = sizeof(int16_t) * 2;
 			soundInfo.wavePeriod = soundInfo.samplesPerSecond / soundInfo.toneHertz;
@@ -336,8 +355,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 
 			// Initialize direct sound
 			Win32_InitDirectSound(WindowHandle, soundInfo.samplesPerSecond, soundInfo.secondaryBufferSize);
-			Win32_FillSoundBuffer(&soundInfo, 0, soundInfo.latencySampleCount * soundInfo.bytesPerSample);
+			Win32_ClearBuffer(&soundInfo);
 			SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
+			int16_t* samples = (int16_t*) VirtualAlloc(0, soundInfo.secondaryBufferSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
 			// Start our performance query
 			LARGE_INTEGER beginCounter;
@@ -382,21 +402,39 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 				}
 
 				
+				// TODO: some temp stuff for Direct Sound output test
+				DWORD playCursor; DWORD writeCursor; 
+				DWORD byteToLock; DWORD targetCursor; DWORD bytesToWrite;
+				bool soundIsValid = false;
+				
+				if (SUCCEEDED(SecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor))) { // Get locs of play and write cursors, where to start writing
+					// Get the byte to lock, convert samples to bytes and wrap
+					byteToLock = (soundInfo.runningSampleIndex * soundInfo.bytesPerSample) % soundInfo.secondaryBufferSize;
+
+					// Get the target cursor position
+					targetCursor = (playCursor + (soundInfo.latencySampleCount * soundInfo.bytesPerSample))   %   soundInfo.secondaryBufferSize;
+
+					// Get the number of bytes to write into the sound buffer, how much to write
+					if (byteToLock > targetCursor) { bytesToWrite = soundInfo.secondaryBufferSize - byteToLock + targetCursor; }
+					else                           { bytesToWrite = targetCursor - byteToLock; }
+
+					soundIsValid = true;
+				}
+				
 				// TODO: some temp stuff for our sound
-				int16_t samples[48000/30];
 				GameSoundBuffer SoundBuffer = {};
 				SoundBuffer.samplesPerSecond = soundInfo.samplesPerSecond;
-				SoundBuffer.sampleCount = SoundBuffer.samplesPerSecond / 30;
+				SoundBuffer.sampleCount = bytesToWrite / soundInfo.bytesPerSample;
 				SoundBuffer.samples = samples;
 				
 				// TODO: some temp stuff for displaying our gradient
-				GameImageBuffer buffer = {};
-				buffer.BitmapMemory = GlobalBackBuffer.BitmapMemory;
-				buffer.Width = GlobalBackBuffer.Width;
-				buffer.Height = GlobalBackBuffer.Height;
-				buffer.Pitch = GlobalBackBuffer.Pitch;
+				GameImageBuffer ImageBuffer = {};
+				ImageBuffer.BitmapMemory = GlobalBackBuffer.BitmapMemory;
+				ImageBuffer.Width = GlobalBackBuffer.Width;
+				ImageBuffer.Height = GlobalBackBuffer.Height;
+				ImageBuffer.Pitch = GlobalBackBuffer.Pitch;
 				
-				gameUpdateAndRender(&buffer, xOffset, yOffset, &SoundBuffer);
+				gameUpdateAndRender(&ImageBuffer, xOffset, yOffset, &SoundBuffer, soundInfo.toneHertz);
 				win32_WinDim Dimension = Win32_GetWinDim(WindowHandle);
 				Win32_DisplayBuffer(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
 
@@ -408,23 +446,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 				 *  --> This latency is often difficult to ascertain due to unspecified bounds and crappy equipment latency
 				 */
 
-				// TODO: some temp stuff for Direct Sound output test
-
-				DWORD playCursor; DWORD writeCursor; DWORD bytesToWrite;
-			   	if (SUCCEEDED(SecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor))) { // Get locs of play and write cursors, where to start writing
-
-					// Get the byte to lock, convert samples to bytes and wrap
-					DWORD byteToLock = (soundInfo.runningSampleIndex * soundInfo.bytesPerSample) % soundInfo.secondaryBufferSize;
-
-					// Get the target cursor position
-					DWORD targetCursor = (playCursor + (soundInfo.latencySampleCount * soundInfo.bytesPerSample))   %   soundInfo.secondaryBufferSize;
-
-					// Get the number of bytes to write into the sound buffer, how much to write
-					if (byteToLock > targetCursor) { bytesToWrite = soundInfo.secondaryBufferSize - byteToLock + targetCursor; }
-					else                           { bytesToWrite = targetCursor - byteToLock; }
-
+			   	if (soundIsValid) {
 					// Fill the sound buffer with data
-					Win32_FillSoundBuffer(&soundInfo, byteToLock, bytesToWrite);
+					Win32_FillSoundBuffer(&soundInfo, byteToLock, bytesToWrite, &SoundBuffer);
 				}
 				
 				// End our performance query

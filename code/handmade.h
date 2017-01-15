@@ -14,7 +14,8 @@ struct GameSoundBuffer {
 };
 
 // Services the game provides to the platform layer
-static void gameUpdateAndRender(GameImageBuffer* imageBuffer, int xOffset, int yOffset, GameSoundBuffer* soundBuffer);
+static void gameUpdateAndRender(GameImageBuffer* imageBuffer, int xOffset, int yOffset, 
+								GameSoundBuffer* soundBuffer, int toneHertz);
 
 // Services the game provides to the platform layer
 

@@ -22,15 +22,14 @@ RenderWeirdGradient(GameImageBuffer* buffer, int xOffset, int yOffset)
 	}
 }
 
-static void GameOutputSound(GameSoundBuffer* SoundBuffer) {
+static void GameOutputSound(GameSoundBuffer* SoundBuffer, int toneHertz) {
 	static real32 tSine;
 	int16_t toneVolume = 3000;
-	int toneHertz = 256;
 	int wavePeriod = SoundBuffer->samplesPerSecond / toneHertz;
 	int16_t* sampleOut = SoundBuffer->samples;
 
 	// Loop through the first region to write to the buffer, stereo sound is encoded as pairs of 16bit values (left, right)
-	for (DWORD SampleIndex = 0; SampleIndex < SoundBuffer->sampleCount; ++SampleIndex) {
+	for (int SampleIndex = 0; SampleIndex < SoundBuffer->sampleCount; ++SampleIndex) {
 		real32 sineValue = sinf(tSine);
 		int16_t sampleValue = (int16_t) (sineValue * toneVolume);
 		*sampleOut++ = sampleValue;
@@ -39,7 +38,9 @@ static void GameOutputSound(GameSoundBuffer* SoundBuffer) {
 	}
 }
 
-static void gameUpdateAndRender(GameImageBuffer* imageBuffer, int xOffset, int yOffset, GameSoundBuffer* soundBuffer) {
-	GameOutputSound(soundBuffer);
+static void gameUpdateAndRender(GameImageBuffer* imageBuffer, int xOffset, int yOffset, 
+								GameSoundBuffer* soundBuffer, int toneHertz) 
+{
+	GameOutputSound(soundBuffer, toneHertz);
 	RenderWeirdGradient(imageBuffer, xOffset, yOffset);
 }
