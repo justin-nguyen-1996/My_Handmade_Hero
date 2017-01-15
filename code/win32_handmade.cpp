@@ -1,4 +1,11 @@
 
+// Typedefs
+typedef float real32;
+typedef double real64;
+
+// Defines
+#define PI 3.14159265359f
+
 // Includes
 #include <windows.h>
 #include <stdint.h>
@@ -6,13 +13,6 @@
 #include <dsound.h>
 #include <math.h> // TODO: temp include
 #include "handmade.cpp"
-
-// Defines
-#define PI 3.14159265359f
-
-// Typedefs
-typedef float real32;
-typedef double real64;
 
 // Structs
 struct win32_Buffer {
@@ -382,14 +382,21 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 				}
 
 				
+				// TODO: some temp stuff for our sound
+				int16_t samples[48000/30];
+				GameSoundBuffer SoundBuffer = {};
+				SoundBuffer.samplesPerSecond = soundInfo.samplesPerSecond;
+				SoundBuffer.sampleCount = SoundBuffer.samplesPerSecond / 30;
+				SoundBuffer.samples = samples;
+				
 				// TODO: some temp stuff for displaying our gradient
-				gameBuffer buffer = {};
+				GameImageBuffer buffer = {};
 				buffer.BitmapMemory = GlobalBackBuffer.BitmapMemory;
 				buffer.Width = GlobalBackBuffer.Width;
 				buffer.Height = GlobalBackBuffer.Height;
 				buffer.Pitch = GlobalBackBuffer.Pitch;
 				
-				gameUpdateAndRender(&buffer, xOffset, yOffset);
+				gameUpdateAndRender(&buffer, xOffset, yOffset, &SoundBuffer);
 				win32_WinDim Dimension = Win32_GetWinDim(WindowHandle);
 				Win32_DisplayBuffer(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
 
