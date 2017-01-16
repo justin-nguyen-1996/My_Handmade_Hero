@@ -38,9 +38,25 @@ static void GameOutputSound(GameSoundBuffer* SoundBuffer, int toneHertz) {
 	}
 }
 
-static void gameUpdateAndRender(GameImageBuffer* imageBuffer, int xOffset, int yOffset, 
-								GameSoundBuffer* soundBuffer, int toneHertz) 
+static void gameUpdateAndRender(GameInput* input, GameImageBuffer* imageBuffer, GameSoundBuffer* soundBuffer) 
 {
+	static int blueOffset = 0;
+	static int greenOffset = 0;
+	static int toneHertz = 256;
+
+	GameControllerInput* input0 = &(input->controllers[0]);
+	
+	if (input0->isAnalog) {
+		toneHertz = 256 + (int) (128.0f * input0->endX);
+		blueOffset += (int) (4.0f * input0->endY);
+	} else {
+		
+	}
+
+	if (input0->down.endedDown) {
+		greenOffset += 1;
+	}
+	
 	GameOutputSound(soundBuffer, toneHertz);
-	RenderWeirdGradient(imageBuffer, xOffset, yOffset);
+	RenderWeirdGradient(imageBuffer, blueOffset, greenOffset);
 }
