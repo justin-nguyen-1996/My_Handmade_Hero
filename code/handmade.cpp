@@ -38,25 +38,44 @@ static void GameOutputSound(GameSoundBuffer* SoundBuffer, int toneHertz) {
 	}
 }
 
-static void gameUpdateAndRender(GameInput* input, GameImageBuffer* imageBuffer, GameSoundBuffer* soundBuffer) 
-{
-	static int blueOffset = 0;
-	static int greenOffset = 0;
-	static int toneHertz = 256;
+static GameState* gameStartup() {
+	GameState* gameState = new GameState;
+	if (gameState) {
+		gameState->blueOffset = 0;
+		gameState->greenOffset = 0;
+		gameState->toneHertz = 256;
+	}
+}
 
+static GameState* gameShutDown(GameState* gameState) {
+	delete gameState;
+}
+
+static void gameUpdateAndRender(GameMemory* memory,
+								GameInput* input, 
+								GameImageBuffer* imageBuffer, 
+								GameSoundBuffer* soundBuffer) 
+{
+	GameState* gameState = (GameState*) memory->permanentStorage;
+	if (! memory->isInit) {
+		gameState->toneHertz = 256;
+		gameState->blueOffset = 0;
+		gameState->greenOffset = 0;
+	}
+	
 	GameControllerInput* input0 = &(input->controllers[0]);
 	
 	if (input0->isAnalog) {
-		toneHertz = 256 + (int) (128.0f * input0->endX);
-		blueOffset += (int) (4.0f * input0->endY);
+		gameState->toneHertz = 256 + (int) (128.0f * input0->endX);
+		gameState->blueOffset += (int) (4.0f * input0->endY);
 	} else {
 		
 	}
 
 	if (input0->down.endedDown) {
-		greenOffset += 1;
+		gameState->greenOffset += 1;
 	}
 	
-	GameOutputSound(soundBuffer, toneHertz);
-	RenderWeirdGradient(imageBuffer, blueOffset, greenOffset);
+	GameOutputSound(soundBuffer, gameState->toneHertz);
+	RenderWeirdGradient(imageBuffer, gameState->blueOffset, gameState->greenOffset);
 }

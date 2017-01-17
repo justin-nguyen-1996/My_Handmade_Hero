@@ -8,6 +8,9 @@ typedef double real64;
 
 // Function Macros
 #define   arrayCount(array)   (sizeof(array) / sizeof(array[0]))
+#define   Kilobytes(val)      (val * 1024)
+#define   Megabytes(val)      (Kilobytes(val) * 1024)
+#define   Gigabytes(val)      (Megabytes(val) * 1024)
 
 // Includes
 #include <windows.h>
@@ -364,11 +367,15 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 			SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
 			int16_t* samples = (int16_t*) VirtualAlloc(0, soundInfo.secondaryBufferSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
+			// Initialize our game memory
+			GameMemory gameMemory;
+			gameMemory.permanentStorageSize = Megabytes(64);
+			gameMemory.permanentStorage = VirtualAlloc(0, gameMemory.permanentStorageSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+
 			// Start our performance query
 			LARGE_INTEGER beginCounter;
 			QueryPerformanceCounter(&beginCounter);
 			uint64_t beginCycleCount = __rdtsc();
-			
 			
 			// TODO: some temp stuff for our input
 			GameInput input[2] = {};
@@ -437,7 +444,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 // 						TODO: handle this case
 					}
 				}
-
 				
 				// TODO: some temp stuff for Direct Sound output test
 				DWORD playCursor; DWORD writeCursor; 
@@ -471,7 +477,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 				ImageBuffer.Height = GlobalBackBuffer.Height;
 				ImageBuffer.Pitch = GlobalBackBuffer.Pitch;
 				
-				gameUpdateAndRender(newInput, &ImageBuffer, &SoundBuffer);
+				gameUpdateAndRender(&gameMemory, newInput, &ImageBuffer, &SoundBuffer);
 				win32_WinDim Dimension = Win32_GetWinDim(WindowHandle);
 				Win32_DisplayBuffer(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
 

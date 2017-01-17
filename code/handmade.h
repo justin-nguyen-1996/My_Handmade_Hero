@@ -44,8 +44,21 @@ struct GameInput {
 	GameControllerInput controllers[4];
 };
 
+struct GameState {
+	int toneHertz;
+	int blueOffset;
+	int greenOffset;
+};
+
+struct GameMemory {
+	bool isInit;
+	int64_t permanentStorageSize;
+	void* permanentStorage;
+};
+
 // Services the game provides to the platform layer
-static void gameUpdateAndRender(GameInput*       input,
+static void gameUpdateAndRender(GameMemory*      memory,
+								GameInput*       input,
 								GameImageBuffer* imageBuffer,
 								GameSoundBuffer* soundBuffer);
 
