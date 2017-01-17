@@ -1,9 +1,7 @@
 
 #include "handmade.h"
 
-// Test code for displaying a gradient
-static void
-RenderWeirdGradient(GameImageBuffer* buffer, int xOffset, int yOffset)
+static void RenderWeirdGradient(GameImageBuffer* buffer, int xOffset, int yOffset)
 {
 	uint8_t* row = (uint8_t*) buffer->BitmapMemory;
 	for (int y = 0; y < buffer->Height; ++y) {
@@ -59,8 +57,7 @@ static void gameUpdateAndRender(GameMemory* memory,
 	GameState* gameState = (GameState*) memory->permanentStorage;
 	if (! memory->isInit) {
 		gameState->toneHertz = 256;
-		gameState->blueOffset = 0;
-		gameState->greenOffset = 0;
+		memory->isInit = true;
 	}
 	
 	GameControllerInput* input0 = &(input->controllers[0]);
