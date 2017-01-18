@@ -55,7 +55,11 @@ static void gameUpdateAndRender(GameMemory* memory,
 								GameSoundBuffer* soundBuffer) 
 {
 	GameState* gameState = (GameState*) memory->permanentStorage;
+
+	// Initialize the game state and memory
 	if (! memory->isInit) {
+		void* bitmapMemory = DEBUG_Platform_readEntireFile(fileName);
+		if (bitmapMemory) { DEBUG_Platform_freeFileMemory(bitnampMemory); }
 		gameState->toneHertz = 256;
 		memory->isInit = true;
 	}

@@ -13,6 +13,13 @@
  */
 
 // Function macros
+#if HANDMADE_INTERNAL
+	void* DEBUG_Platform_readEntireFile(char* fileName);
+	void DEBUG_Platform_freeFileMemory(void* memory);
+	
+	bool DEBUG_Platform_writeEntireFile(char* fileName, uint32_t memorySize, void* memory);
+#endif
+
 #if HANDMADE_SLOW
 	#define   assert(expression)  (if (! (expression)) { *(int*) 0 = 0; })
 #else
