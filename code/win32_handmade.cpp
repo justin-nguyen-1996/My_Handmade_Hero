@@ -104,6 +104,7 @@ Win32_LoadXInput() {
 	}
 }
 
+// Process button input
 static void Win32_ProcessButton(DWORD XInputButtonState,
 								GameButtonState* oldState, 
 								DWORD buttonBit, 
@@ -227,6 +228,42 @@ Win32_ClearBuffer(win32_SoundInfo* soundBuffer) {
 	}
 }
 
+static void* DEBUG_Platform_readEntireFile(char* fileName) {
+	
+	void* result = 0; LARGE_INTEGER fileSize; 
+	HANDLE fileHandle = CreateFile(fileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+	
+	if (fileHandle != INVALID_HANDLE_VALUE) {
+		
+		if (GetFileSizeEx(fileHandle, &fileSize)) {
+			
+			uint32_t fileSize32 = safeTruncateUInt64(fileSize.QuadPart);
+			result = VirtualAlloc(0, fileSize32, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+			
+			if (result) {
+				
+				if (ReadFile(fileHandle, result, fileSize.QuadPart, &bytesRead, 0)) {
+					
+				}
+			}
+		}
+		
+		CloseHandle(fileHandle);
+	}
+
+	return result;
+}
+
+static void DEBUG_Platform_freeFileMemory(void* memory) {
+	if (memory) {
+		VirtualFree(memory, 0, MEM_RELEASE);
+	}
+}
+
+static bool DEBUG_Platform_writeEntireFile(char* fileName, uint32_t memorySize, void* memory) {
+	
+}
+
 // Create the buffer that we will have Windows display for us
 // Device Independent Bitmap
 static void
@@ -254,8 +291,7 @@ Win32_ResizeDibSection(win32_Buffer* buffer, int Width, int Height)
 }
 
 // Have Windows display our buffer and scale it as appropriate
-static void
-Win32_DisplayBuffer(win32_Buffer* buffer, HDC DeviceContext, int WinWidth, int WinHeight)
+static void Win32_DisplayBuffer(win32_Buffer* buffer, HDC DeviceContext, int WinWidth, int WinHeight)
 {
 	StretchDIBits(DeviceContext,
 				  0, 0, WinWidth, WinHeight,
@@ -267,8 +303,7 @@ Win32_DisplayBuffer(win32_Buffer* buffer, HDC DeviceContext, int WinWidth, int W
 }
 
 // Window Callback Procedure
-LRESULT CALLBACK
-Win32_WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK Win32_WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
 	LRESULT res = 0;
 
@@ -398,10 +433,10 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 						DispatchMessageA(&Message);
 					}
 
-
 					// In case they add more than four controllers some day
 					int maxControllerCount = XUSER_MAX_COUNT;
 					if (maxControllerCount > arrayCount(newInput->controllers)) { maxControllerCount = arrayCount(newInput->controllers); }
+					
 					
 					// Poll for XInput
 					for (DWORD ControllerIndex = 0; ControllerIndex < maxControllerCount; ++ControllerIndex) {

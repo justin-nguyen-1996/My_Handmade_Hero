@@ -14,10 +14,9 @@
 
 // Function macros
 #if HANDMADE_INTERNAL
-	void* DEBUG_Platform_readEntireFile(char* fileName);
-	void DEBUG_Platform_freeFileMemory(void* memory);
-	
-	bool DEBUG_Platform_writeEntireFile(char* fileName, uint32_t memorySize, void* memory);
+	static void* DEBUG_Platform_readEntireFile(char* fileName);
+	static void DEBUG_Platform_freeFileMemory(void* memory);
+	static bool DEBUG_Platform_writeEntireFile(char* fileName, uint32_t memorySize, void* memory);
 #endif
 
 #if HANDMADE_SLOW
@@ -97,5 +96,13 @@ static void gameUpdateAndRender(GameMemory*      memory,
 								GameSoundBuffer* soundBuffer);
 
 // Services the game provides to the platform layer
+
+// Helper functions
+
+inline uint32_t safeTruncateUInt64(uint64_t value) {
+	assert(value <= 0xFFFFFFFF);
+	uint32_t res = (uint32_t) value; 
+	return res;
+}
 
 #endif
