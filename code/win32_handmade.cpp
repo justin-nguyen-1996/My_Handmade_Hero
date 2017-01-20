@@ -228,22 +228,26 @@ Win32_ClearBuffer(win32_SoundInfo* soundBuffer) {
 	}
 }
 
-static void* DEBUG_Platform_readEntireFile(char* fileName) {
+static DebugReadFile DEBUG_Platform_readEntireFile(char* fileName) {
 	
-	void* result = 0; LARGE_INTEGER fileSize; 
-	HANDLE fileHandle = CreateFile(fileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+	DebugReadFile result = {}; LARGE_INTEGER fileSize; 
+	HANDLE fileHandle = CreateFileA(fileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
 	
 	if (fileHandle != INVALID_HANDLE_VALUE) {
 		
 		if (GetFileSizeEx(fileHandle, &fileSize)) {
 			
 			uint32_t fileSize32 = safeTruncateUInt64(fileSize.QuadPart);
-			result = VirtualAlloc(0, fileSize32, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+			result.contents = VirtualAlloc(0, fileSize32, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 			
-			if (result) {
+			if (result.contents) {
 				
-				if (ReadFile(fileHandle, result, fileSize.QuadPart, &bytesRead, 0)) {
-					
+				DWORD bytesRead;
+				if (ReadFile(fileHandle, result.contents, fileSize32, &bytesRead, 0)   &&   fileSize32 == bytesRead) {
+					result.contentSize = fileSize32;
+				} else { 
+					DEBUG_Platform_freeFileMemory(result.contents); 
+					result.contents = 0; 
 				}
 			}
 		}
@@ -261,7 +265,21 @@ static void DEBUG_Platform_freeFileMemory(void* memory) {
 }
 
 static bool DEBUG_Platform_writeEntireFile(char* fileName, uint32_t memorySize, void* memory) {
+
+	bool result = false; LARGE_INTEGER fileSize; 
+	HANDLE fileHandle = CreateFileA(fileName, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
 	
+	if (fileHandle != INVALID_HANDLE_VALUE) {
+		
+		DWORD bytesWritten;
+		if (WriteFile(fileHandle, memory, memorySize, &bytesWritten, 0)) {
+			result = (bytesWritten == memorySize);
+		} 		
+		
+		CloseHandle(fileHandle);
+	}
+
+	return result;
 }
 
 // Create the buffer that we will have Windows display for us

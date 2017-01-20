@@ -58,8 +58,12 @@ static void gameUpdateAndRender(GameMemory* memory,
 
 	// Initialize the game state and memory
 	if (! memory->isInit) {
-		void* bitmapMemory = DEBUG_Platform_readEntireFile(fileName);
-		if (bitmapMemory) { DEBUG_Platform_freeFileMemory(bitnampMemory); }
+		char* fileName = __FILE__; // TODO: temp
+		DebugReadFile file = DEBUG_Platform_readEntireFile(fileName);
+		if (file.contents) { 
+			DEBUG_Platform_writeEntireFile("../data/test.out", file.contentSize, file.contents);
+			DEBUG_Platform_freeFileMemory(file.contents); 
+		}
 		gameState->toneHertz = 256;
 		memory->isInit = true;
 	}

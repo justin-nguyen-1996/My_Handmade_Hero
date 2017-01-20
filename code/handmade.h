@@ -1,30 +1,7 @@
 #ifndef HANDMADE_H
 #define HANDMADE_H
 
-/*  Notes for macro defines
-	 
-	HANDMADE_INTERNAL:
-		0 - build for public release
-		1 - build for developers only
-
-	HANDMADE_SLOW:
-		0 - no slow code allowed
-		1 - slow code allowed
- */
-
 // Function macros
-#if HANDMADE_INTERNAL
-	static void* DEBUG_Platform_readEntireFile(char* fileName);
-	static void DEBUG_Platform_freeFileMemory(void* memory);
-	static bool DEBUG_Platform_writeEntireFile(char* fileName, uint32_t memorySize, void* memory);
-#endif
-
-#if HANDMADE_SLOW
-	#define   assert(expression)  (if (! (expression)) { *(int*) 0 = 0; })
-#else
-	#define   assert(expression)
-#endif
-
 #define   arrayCount(array)   (sizeof(array) / sizeof(array[0]))
 #define   Kilobytes(val)      (val * 1024)
 #define   Megabytes(val)      (Kilobytes(val) * 1024)
@@ -89,6 +66,35 @@ struct GameMemory {
 	void* transientStorage;
 };
 
+struct DebugReadFile {
+	uint32_t contentSize;
+	void* contents;
+};
+
+/*  Notes for macro defines
+	 
+	HANDMADE_INTERNAL:
+		0 - build for public release
+		1 - build for developers only
+
+	HANDMADE_SLOW:
+		0 - no slow code allowed
+		1 - slow code allowed
+ */
+
+#if HANDMADE_INTERNAL
+	static DebugReadFile DEBUG_Platform_readEntireFile(char* fileName);
+	static void DEBUG_Platform_freeFileMemory(void* memory);
+	static bool DEBUG_Platform_writeEntireFile(char* fileName, uint32_t memorySize, void* memory);
+#endif
+
+#if HANDMADE_SLOW
+	#define   assert(expression)  if (! (expression)) { *(int*) 0 = 0; }
+#else
+	#define   assert(expression)
+#endif
+
+
 // Services the game provides to the platform layer
 static void gameUpdateAndRender(GameMemory*      memory,
 								GameInput*       input,
@@ -98,7 +104,6 @@ static void gameUpdateAndRender(GameMemory*      memory,
 // Services the game provides to the platform layer
 
 // Helper functions
-
 inline uint32_t safeTruncateUInt64(uint64_t value) {
 	assert(value <= 0xFFFFFFFF);
 	uint32_t res = (uint32_t) value; 
