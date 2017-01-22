@@ -66,6 +66,8 @@ static void gameUpdateAndRender(GameMemory* memory,
 
 	if (input0->down.endedDown) {
 		gameState->greenOffset += 1;
+	} else if (input0->up.endedDown) {
+		gameState->greenOffset -= 1;
 	}
 	
 	GameOutputSound(soundBuffer, gameState->toneHertz);

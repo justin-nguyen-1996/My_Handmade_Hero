@@ -42,8 +42,8 @@ struct GameControllerInput {
 			GameButtonState down;
 			GameButtonState right;
 			GameButtonState left;
-			GameButtonState leftShoulder;
-			GameButtonState rightShoulder;
+			GameButtonState lShoulder;
+			GameButtonState rShoulder;
 		};
 	};
 };

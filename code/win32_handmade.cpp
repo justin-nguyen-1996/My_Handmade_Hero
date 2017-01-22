@@ -103,13 +103,15 @@ Win32_LoadXInput() {
 }
 
 // Process button input
-static void Win32_ProcessButton(DWORD XInputButtonState,
-								GameButtonState* oldState,
-								DWORD buttonBit,
-								GameButtonState* newState)
-{
+static void Win32_ProcessButton(DWORD XInputButtonState, GameButtonState* oldState, DWORD buttonBit, GameButtonState* newState) {
 	newState->endedDown = ((XInputButtonState & buttonBit) == buttonBit);
 	newState->halfTransitionCount = (oldState->endedDown != newState->endedDown) ? 1 : 0;
+}
+
+// Process keyboard input
+static void Win32_ProcessKeyboard(GameButtonState* newState, bool isDown) {
+	newState->endedDown = isDown;
+	newState->halfTransitionCount += 1;
 }
 
 // Initialize Direct Sound (DSound)
@@ -346,6 +348,45 @@ LRESULT CALLBACK Win32_WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lPa
 	return res;
 }
 
+static void Win32_ProcessPendingMessages(GameControllerInput* keyboardController) {
+	// Message queue --> pull out one at a time --> translate & dispatch --> parse in Window Callback procedure
+	MSG Message;
+	while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE)) {
+		if (Message.message == WM_QUIT) { Running = false; }
+		switch(Message.message) {
+			case WM_SYSKEYDOWN:
+			case WM_SYSKEYUP:
+			case WM_KEYDOWN:
+			case WM_KEYUP: { uint32_t VKCode = (uint32_t) Message.wParam; // virtual key code
+							 bool WasDown = ((Message.lParam & (1 << 30)) != 0);
+							 bool IsDown = ((Message.lParam & (1 << 31)) == 0);
+							 if (WasDown != IsDown) {
+								 if (VKCode == 'W') { }
+								 else if (VKCode == 'A') { }
+								 else if (VKCode == 'S') { }
+								 else if (VKCode == 'D') { }
+								 else if (VKCode == 'Q')      { Win32_ProcessKeyboard(&keyboardController->lShoulder, IsDown); }
+								 else if (VKCode == 'E')      { Win32_ProcessKeyboard(&keyboardController->rShoulder, IsDown); }
+								 else if (VKCode == VK_UP)    { Win32_ProcessKeyboard(&keyboardController->up,        IsDown); }
+								 else if (VKCode == VK_LEFT)  { Win32_ProcessKeyboard(&keyboardController->left,      IsDown); }
+								 else if (VKCode == VK_DOWN)  { Win32_ProcessKeyboard(&keyboardController->down,      IsDown); }
+								 else if (VKCode == VK_RIGHT) { Win32_ProcessKeyboard(&keyboardController->right,     IsDown); }
+								 else if (VKCode == VK_ESCAPE) { }
+								 else if (VKCode == VK_SPACE) { }
+							 }
+
+							 bool AltKeyDown = Message.lParam & (1 << 29);
+							 if ((VKCode == VK_F4)  &&  AltKeyDown) { Running = false; }
+						   }
+
+			default: { TranslateMessage(&Message);
+					   DispatchMessageA(&Message);
+					   break;
+					 }
+		}
+	}
+}
+
 // WinMain
 int CALLBACK
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -420,42 +461,12 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 				// Message Loop
 				while (Running) {
 
-					// Message queue --> pull out one at a time --> translate & dispatch --> parse in Window Callback procedure
-					MSG Message;
-					while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE)) {
-						if (Message.message == WM_QUIT) { Running = false; }
-						switch(Message.message) {
-							case WM_SYSKEYDOWN:
-							case WM_SYSKEYUP:
-							case WM_KEYDOWN:
-							case WM_KEYUP: { uint32_t VKCode = (uint32_t) wParam; // virtual key code
-											 bool WasDown = ((lParam & (1 << 30)) != 0);
-											 bool IsDown = ((lParam & (1 << 31)) == 0);
-											 if (WasDown != IsDown) {
-												 if (VKCode == 'W') { }
-												 else if (VKCode == 'A') { }
-												 else if (VKCode == 'S') { }
-												 else if (VKCode == 'D') { }
-												 else if (VKCode == 'Q') { }
-												 else if (VKCode == 'E') { }
-												 else if (VKCode == VK_UP) { }
-												 else if (VKCode == VK_LEFT) { }
-												 else if (VKCode == VK_DOWN) { }
-												 else if (VKCode == VK_RIGHT) { }
-												 else if (VKCode == VK_ESCAPE) { }
-												 else if (VKCode == VK_SPACE) { }
-										     }
-
-										     bool AltKeyDown = lParam & (1 << 29);
-										     if ((VKCode == VK_F4)  &&  AltKeyDown) { Running = false; }
-										   }
-
-							default: { TranslateMessage(&Message);
-									   DispatchMessageA(&Message);
-									   break;
-									 }
-						}
-					}
+					GameControllerInput* keyboardController = &newInput->controllers[0];
+					GameControllerInput  zeroController = {};
+					*keyboardController = zeroController;
+					
+					// Process keyboard messages
+					Win32_ProcessPendingMessages(keyboardController);
 
 					// In case they add more than four controllers some day
 					DWORD maxControllerCount = XUSER_MAX_COUNT;
@@ -499,8 +510,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 							Win32_ProcessButton(pad->wButtons, &oldController->right,         XINPUT_GAMEPAD_B,              &newController->right);
 							Win32_ProcessButton(pad->wButtons, &oldController->left,          XINPUT_GAMEPAD_X,              &newController->left);
 							Win32_ProcessButton(pad->wButtons, &oldController->up,            XINPUT_GAMEPAD_Y,              &newController->up);
-							Win32_ProcessButton(pad->wButtons, &oldController->leftShoulder,  XINPUT_GAMEPAD_LEFT_SHOULDER,  &newController->leftShoulder);
-							Win32_ProcessButton(pad->wButtons, &oldController->rightShoulder, XINPUT_GAMEPAD_RIGHT_SHOULDER, &newController->rightShoulder);
+							Win32_ProcessButton(pad->wButtons, &oldController->lShoulder,     XINPUT_GAMEPAD_LEFT_SHOULDER,  &newController->lShoulder);
+							Win32_ProcessButton(pad->wButtons, &oldController->rShoulder,     XINPUT_GAMEPAD_RIGHT_SHOULDER, &newController->rShoulder);
 
 	// 						bool Start =         (pad->wButtons & XINPUT_GAMEPAD_START);
 	// 						bool Back =          (pad->wButtons & XINPUT_GAMEPAD_BACK);
