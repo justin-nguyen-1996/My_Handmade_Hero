@@ -352,8 +352,8 @@ static void Win32_ProcessPendingMessages(GameControllerInput* keyboardController
 	// Message queue --> pull out one at a time --> translate & dispatch --> parse in Window Callback procedure
 	MSG Message;
 	while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE)) {
-		if (Message.message == WM_QUIT) { Running = false; }
 		switch(Message.message) {
+			case WM_QUIT: Running = false; break;
 			case WM_SYSKEYDOWN:
 			case WM_SYSKEYUP:
 			case WM_KEYDOWN:
@@ -380,7 +380,7 @@ static void Win32_ProcessPendingMessages(GameControllerInput* keyboardController
 						   }
 
 			default: { TranslateMessage(&Message);
-					   DispatchMessageA(&Message);
+					   DispatchMessageA(&Message); // calls the Window Callback procedure Win32_WindowProc, required by Windows
 					   break;
 					 }
 		}
