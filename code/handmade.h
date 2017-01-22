@@ -3,10 +3,10 @@
 
 // Function macros
 #define   arrayCount(array)   (sizeof(array) / sizeof(array[0]))
-#define   Kilobytes(val)      (val * 1024)
-#define   Megabytes(val)      (Kilobytes(val) * 1024)
-#define   Gigabytes(val)      (Megabytes(val) * 1024)
-#define   Terabytes(val)      (Gigabytes(val) * 1024)
+#define   Kilobytes(val)      (val * 1024LL)
+#define   Megabytes(val)      (Kilobytes(val) * 1024LL)
+#define   Gigabytes(val)      (Megabytes(val) * 1024LL)
+#define   Terabytes(val)      (Gigabytes(val) * 1024LL)
 
 struct GameImageBuffer {
 	void* BitmapMemory;
