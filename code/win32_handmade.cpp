@@ -259,9 +259,7 @@ static DebugReadFile DEBUG_Platform_readEntireFile(char* fileName) {
 }
 
 static void DEBUG_Platform_freeFileMemory(void* memory) {
-	if (memory) {
-		VirtualFree(memory, 0, MEM_RELEASE);
-	}
+	if (memory) { VirtualFree(memory, 0, MEM_RELEASE); }
 }
 
 static bool DEBUG_Platform_writeEntireFile(char* fileName, uint32_t memorySize, void* memory) {
