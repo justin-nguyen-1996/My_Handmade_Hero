@@ -55,18 +55,22 @@ static void gameUpdateAndRender(GameMemory* memory,
 		memory->isInit = true;
 	}
 	
-	GameControllerInput* input0 = &(input->controllers[0]);
-	
-	if (input0->isAnalog) {
-		gameState->blueOffset += (int) (4.0f * input0->endY);
-		gameState->toneHertz = 256 + (int) (128.0f * input0->endX);
-	} else {
+	// Handle game input
+	for (int controllerIndex = 0; controllerIndex < arrayCount(input->controllers); ++controllerIndex) {
+		GameControllerInput* controller = getController(input, controllerIndex);
 		
-	}
+		if (controller->isAnalog) {
+			gameState->blueOffset += (int) (4.0f * controller->stickAverageX);
+			gameState->toneHertz = 256 + (int) (128.0f * controller->stickAverageY);
+		} else {
+			if (controller->moveLeft.endedDown)       { gameState->blueOffset -= 1; } 
+			else if (controller->moveRight.endedDown) { gameState->blueOffset += 1; }
+		}
 
-	if (input0->down.endedDown) {
-		gameState->greenOffset += 1;
-	}	
+		if (controller->actionDown.endedDown) {
+			gameState->greenOffset += 1;
+		}	
+	}
 	
 	GameOutputSound(soundBuffer, gameState->toneHertz);
 	RenderWeirdGradient(imageBuffer, gameState->blueOffset, gameState->greenOffset);
