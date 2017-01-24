@@ -471,8 +471,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 					// Zero the keyboard controller input
 					GameControllerInput* oldKeyboardController = getController(oldInput, 0);
 					GameControllerInput* newKeyboardController = getController(newInput, 0);
-					GameControllerInput  zeroController = {};
-					*newKeyboardController = zeroController;
+					*newKeyboardController = {};
 					newKeyboardController->isConnected = true;
 
 					// For each button, set the new button state to the old button state
@@ -499,37 +498,35 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 						if (XInputGetState(ControllerIndex, &ControllerState) == ERROR_SUCCESS) { // controller plugged in
 
 							XINPUT_GAMEPAD* pad = &ControllerState.Gamepad;
-							newController->isAnalog = true;
 							newController->isConnected = true;
-
+							
 							// Normalize the x & y stick
 							newController->stickAverageX = Win32_ProcessXInputStickPos(pad->sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
 							newController->stickAverageY = Win32_ProcessXInputStickPos(pad->sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
 
+							// See if we're using a game controller (as opposed to the keyboard)
+							if (newController->stickAverageX   ||   newController->stickAverageY) { newController->isAnalog = true; }
+
 							// Process the DPAD
-							if (pad->wButtons & XINPUT_GAMEPAD_DPAD_UP)         { newController->stickAverageY = 1.0f; }
-							else if (pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN)  { newController->stickAverageY = -1.0f; }
-							else if (pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT)  { newController->stickAverageY = -1.0f; }
-							else if (pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT) { newController->stickAverageY = 1.0f; }
+							if (pad->wButtons & XINPUT_GAMEPAD_DPAD_UP)         { newController->stickAverageY = 1.0f;  newController->isAnalog = false; }
+							else if (pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN)  { newController->stickAverageY = -1.0f; newController->isAnalog = false; }
+							else if (pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT)  { newController->stickAverageY = -1.0f; newController->isAnalog = false; }
+							else if (pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT) { newController->stickAverageY = 1.0f;  newController->isAnalog = false; }
 
 							// Process each of the buttons
 							real32 threshold = 0.5f;
-							Win32_ProcessButton(
-									(newController->stickAverageX   <   -threshold) ? 1 : 0, 
-									&oldController->moveLeft, 1, 
-									&newController->moveLeft);
-							Win32_ProcessButton(
-									(newController->stickAverageX   >   threshold) ? 1 : 0,
-									&oldController->moveLeft, 1, 
-									&newController->moveLeft);
-							Win32_ProcessButton(
-									(newController->stickAverageY   <   -threshold) ? 1 : 0, 
-									&oldController->moveLeft, 1,
-									&newController->moveLeft);
-							Win32_ProcessButton(
-									(newController->stickAverageY   >   threshold) ? 1 : 0, 
-									&oldController->moveLeft, 1,
-									&newController->moveLeft);
+							Win32_ProcessButton( (newController->stickAverageX   <   -threshold) ? 1 : 0, 
+												 &oldController->moveLeft, 1, 
+												 &newController->moveLeft);
+							Win32_ProcessButton( (newController->stickAverageX   >   threshold) ? 1 : 0,
+												 &oldController->moveRight, 1, 
+												 &newController->moveRight);
+							Win32_ProcessButton( (newController->stickAverageY   <   -threshold) ? 1 : 0, 
+												 &oldController->moveDown, 1,
+												 &newController->moveDown);
+							Win32_ProcessButton( (newController->stickAverageY   >   threshold) ? 1 : 0, 
+												 &oldController->moveUp, 1,
+												 &newController->moveUp);
 							
 							Win32_ProcessButton(pad->wButtons, &oldController->actionDown,         XINPUT_GAMEPAD_A,              &newController->actionDown);
 							Win32_ProcessButton(pad->wButtons, &oldController->actionRight,         XINPUT_GAMEPAD_B,              &newController->actionRight);
@@ -539,9 +536,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 							Win32_ProcessButton(pad->wButtons, &oldController->rShoulder,     XINPUT_GAMEPAD_RIGHT_SHOULDER, &newController->rShoulder);
 							Win32_ProcessButton(pad->wButtons, &oldController->start,     XINPUT_GAMEPAD_START, &newController->start);
 							Win32_ProcessButton(pad->wButtons, &oldController->back,     XINPUT_GAMEPAD_BACK, &newController->back);
-
-	// 						bool Start =         (pad->wButtons & XINPUT_GAMEPAD_START);
-	// 						bool Back =          (pad->wButtons & XINPUT_GAMEPAD_BACK);
+							
 						} else { // controller not plugged in
 							newController->isConnected = false;
 						}

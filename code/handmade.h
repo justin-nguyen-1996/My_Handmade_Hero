@@ -12,18 +12,11 @@
 		1 - slow code allowed
  */
 
-// HANDMADE_INTERNAL function macros
-#if HANDMADE_INTERNAL
-	static DebugReadFile DEBUG_Platform_readEntireFile(char* fileName);
-	static void DEBUG_Platform_freeFileMemory(void* memory);
-	static bool DEBUG_Platform_writeEntireFile(char* fileName, uint32_t memorySize, void* memory);
-#endif
-
-// HANDMADE_SLOW function macros
+ // HANDMADE_SLOW function macros
 #if HANDMADE_SLOW
-	#define   assert(expression)  if (! (expression)) { *(int*) 0 = 0; }
+	 #define   assert(expression)  if (! (expression)) { *(int*) 0 = 0; }
 #else
-	#define   assert(expression)
+	 #define   assert(expression)
 #endif
 
 // Function macros
@@ -32,6 +25,17 @@
 #define   Megabytes(val)      (Kilobytes(val) * 1024LL)
 #define   Gigabytes(val)      (Megabytes(val) * 1024LL)
 #define   Terabytes(val)      (Gigabytes(val) * 1024LL)
+
+// HANDMADE_INTERNAL function macros
+#if HANDMADE_INTERNAL
+	struct DebugReadFile {
+		uint32_t contentSize;
+		void* contents;
+	};
+	static DebugReadFile DEBUG_Platform_readEntireFile(char* fileName);
+	static void DEBUG_Platform_freeFileMemory(void* memory);
+	static bool DEBUG_Platform_writeEntireFile(char* fileName, uint32_t memorySize, void* memory);
+#endif
 
 struct GameImageBuffer {
 	void* BitmapMemory;
@@ -59,7 +63,7 @@ struct GameControllerInput {
 	real32 stickAverageY;
 
 	union {
-		GameButtonState buttons[10];
+		GameButtonState buttons[12];
 		struct {
 			GameButtonState moveUp;
 			GameButtonState moveDown;
@@ -102,11 +106,6 @@ struct GameMemory {
 	void* permanentStorage;
 	uint64_t transientStorageSize;
 	void* transientStorage;
-};
-
-struct DebugReadFile {
-	uint32_t contentSize;
-	void* contents;
 };
 
 // Services the game provides to the platform layer
