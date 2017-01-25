@@ -393,6 +393,19 @@ static void Win32_ProcessPendingMessages(GameControllerInput* keyboardController
 	}
 }
 
+static int64_t PerformanceFreq;
+
+inline real32 Win32_getSecondsElapsed(LARGE_INTEGER start, LARGE_INTEGER end) {
+	real32 res = (real32)(end.QuadPart - start.QuadPart) / (real32)PerformanceFreq;
+	return res;
+}
+
+inline LARGE_INTEGER getWallClock() {
+	LARGE_INTEGER res;
+	QueryPerformanceCounter(&res);
+	return res;
+}
+
 // WinMain
 int CALLBACK
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -401,7 +414,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 	// Get the system's performance frequency for profiling purposes
 	LARGE_INTEGER PerformanceFreqRes;
 	QueryPerformanceFrequency(&PerformanceFreqRes);
-	int64_t PerformanceFreq = PerformanceFreqRes.QuadPart;
+	PerformanceFreq = PerformanceFreqRes.QuadPart;
 
 	// Load XInput .dll
 	Win32_LoadXInput();
@@ -416,6 +429,11 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 
 	// Set the size of our buffer
 	Win32_ResizeDibSection(&GlobalBackBuffer, 1280, 720);
+
+	// Set the monitor refresh rate TODO: shouldn't have to manually hardcode this
+	int monitorRefreshHz = 60;
+	int gameUpdateHz = monitorRefreshHz / 2;
+	real32 targetSecsPerFrame = 1.0f / (real32) gameUpdateHz;
 
 	// Register the window and create the window
 	if (RegisterClassA(&WindowClass)) {
@@ -597,11 +615,17 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 					QueryPerformanceCounter(&endCounter);
 
 					// Calculate the timing differences and output as debug info
-					uint64_t cycleDiff = endCycleCount - beginCycleCount;
-					int64_t counterDiff = endCounter.QuadPart - beginCounter.QuadPart;
-					real64 msPerFrame = (1000.0f * (real64)counterDiff) / (real64) PerformanceFreq;
-					real64 FPS = (real64) PerformanceFreq / (real64) counterDiff;
-					real64 MegaCyclesPerFrame = (real64) cycleDiff / (1000 * 1000);
+					uint64_t cyclesElapsed = endCycleCount - beginCycleCount;
+					int64_t counterElapsed = endCounter.QuadPart - beginCounter.QuadPart;
+					real32 secondsElapsedForWork = (real32)counterElapsed / (real32) PerformanceFreq;
+					real32 secondsElapsedForFrame = secondsElapsedForWork;
+					while (secondsElapsedForFrame < targetSecsPerFrame) {
+						QueryPerformanceCounter(&endCounter);
+						secondsElapsedForFrame = (real32)(endCounter.QuadPart - beginCounter.QuadPart) / (real32)PerformanceFreq;
+					}
+					real64 msPerFrame = (1000.0f * (real64)counterElapsed) / (real64) PerformanceFreq;
+					real64 FPS = (real64) PerformanceFreq / (real64) counterElapsed;
+					real64 MegaCyclesPerFrame = (real64) cyclesElapsed / (1000 * 1000);
 
 					// Reset the counters
 					beginCounter = endCounter;
