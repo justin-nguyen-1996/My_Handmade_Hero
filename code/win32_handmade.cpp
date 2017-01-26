@@ -43,6 +43,7 @@ struct win32_SoundInfo {
 static bool Running;
 static win32_Buffer GlobalBackBuffer;
 static LPDIRECTSOUNDBUFFER SecondaryBuffer;
+static int64_t PerformanceFreq;
 
 /*******************************************/
 
@@ -393,14 +394,12 @@ static void Win32_ProcessPendingMessages(GameControllerInput* keyboardController
 	}
 }
 
-static int64_t PerformanceFreq;
-
 inline real32 Win32_getSecondsElapsed(LARGE_INTEGER start, LARGE_INTEGER end) {
 	real32 res = (real32)(end.QuadPart - start.QuadPart) / (real32)PerformanceFreq;
 	return res;
 }
 
-inline LARGE_INTEGER getWallClock() {
+inline LARGE_INTEGER Win32_getWallClock() {
 	LARGE_INTEGER res;
 	QueryPerformanceCounter(&res);
 	return res;
@@ -411,10 +410,15 @@ int CALLBACK
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	// Some basic setup
+	
 	// Get the system's performance frequency for profiling purposes
 	LARGE_INTEGER PerformanceFreqRes;
 	QueryPerformanceFrequency(&PerformanceFreqRes);
 	PerformanceFreq = PerformanceFreqRes.QuadPart;
+
+	// Set Windows scheduler granularity to one millisecond so that our sleep can be more granular
+	UINT desiredSchedulerMS = 1;
+	bool sleepIsGranular = (timeBeginPeriod(desiredSchedulerMS) == TIMERR_NOERROR);
 
 	// Load XInput .dll
 	Win32_LoadXInput();
@@ -473,8 +477,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 			if (samples  &&  gameMemory.permanentStorage  &&  gameMemory.transientStorage) {
 
 				// Start our performance query
-				LARGE_INTEGER beginCounter;
-				QueryPerformanceCounter(&beginCounter);
+				LARGE_INTEGER beginCounter = Win32_getWallClock();
 				uint64_t beginCycleCount = __rdtsc();
 
 				// TODO: some temp stuff for our input
@@ -592,9 +595,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 					ImageBuffer.Height = GlobalBackBuffer.Height;
 					ImageBuffer.Pitch = GlobalBackBuffer.Pitch;
 
+					// Call our game platform
 					gameUpdateAndRender(&gameMemory, newInput, &ImageBuffer, &SoundBuffer);
-					win32_WinDim Dimension = Win32_GetWinDim(WindowHandle);
-					Win32_DisplayBuffer(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
 
 					/*
 					 * Note on audio latency:
@@ -604,37 +606,55 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 					 *  --> This latency is often difficult to ascertain due to unspecified bounds and crappy equipment latency
 					 */
 
-					if (soundIsValid) {
-						// Fill the sound buffer with data
-						Win32_FillSoundBuffer(&soundInfo, byteToLock, bytesToWrite, &SoundBuffer);
-					}
-
-					// End our performance query
-					uint64_t endCycleCount = __rdtsc();
-					LARGE_INTEGER endCounter;
-					QueryPerformanceCounter(&endCounter);
+					// Fill the sound buffer with data
+					if (soundIsValid) { Win32_FillSoundBuffer(&soundInfo, byteToLock, bytesToWrite, &SoundBuffer); }
 
 					// Calculate the timing differences and output as debug info
-					uint64_t cyclesElapsed = endCycleCount - beginCycleCount;
-					int64_t counterElapsed = endCounter.QuadPart - beginCounter.QuadPart;
-					real32 secondsElapsedForWork = (real32)counterElapsed / (real32) PerformanceFreq;
+					LARGE_INTEGER workCounter = Win32_getWallClock();
+					real32 secondsElapsedForWork = Win32_getSecondsElapsed(beginCounter, workCounter);
 					real32 secondsElapsedForFrame = secondsElapsedForWork;
-					while (secondsElapsedForFrame < targetSecsPerFrame) {
-						QueryPerformanceCounter(&endCounter);
-						secondsElapsedForFrame = (real32)(endCounter.QuadPart - beginCounter.QuadPart) / (real32)PerformanceFreq;
+					
+					// If time per frame is not enough (didn't hit our target seconds per frame) then sleep until it does hit our target
+					if (secondsElapsedForFrame < targetSecsPerFrame) {
+						
+						if (sleepIsGranular) {
+							DWORD sleepMilliSecs = (DWORD) (1000.0f * (targetSecsPerFrame - secondsElapsedForFrame));
+							if (sleepMilliSecs > 0) { Sleep(sleepMilliSecs); }
+						}
+						
+						real32 testSecondsElapsedForFrame = Win32_getSecondsElapsed(beginCounter, Win32_getWallClock());
+						assert(testSecondsElapsedForFrame < targetSecsPerFrame);
+                        
+						while (secondsElapsedForFrame < targetSecsPerFrame) {
+                            secondsElapsedForFrame = Win32_getSecondsElapsed(beginCounter, Win32_getWallClock());
+						}
 					}
-					real64 msPerFrame = (1000.0f * (real64)counterElapsed) / (real64) PerformanceFreq;
-					real64 FPS = (real64) PerformanceFreq / (real64) counterElapsed;
-					real64 MegaCyclesPerFrame = (real64) cyclesElapsed / (1000 * 1000);
-
-					// Reset the counters
-					beginCounter = endCounter;
-					beginCycleCount = endCycleCount;
-
+					
+					// Use the Windows platform to display our buffer
+					win32_WinDim Dimension = Win32_GetWinDim(WindowHandle);
+					Win32_DisplayBuffer(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
+					
 					// Swap the old and new inputs
 					GameInput* tempInput = oldInput;
 					oldInput = newInput;
 					newInput = tempInput;
+
+					// Reset the counters
+					LARGE_INTEGER endCounter = Win32_getWallClock();
+					beginCounter = endCounter;
+					real32 msPerFrame = 1000.0f * Win32_getSecondsElapsed(beginCounter, endCounter);
+					
+					// End our performance query
+					uint64_t endCycleCount = __rdtsc();
+					beginCycleCount = endCycleCount;
+					uint64_t cyclesElapsed = endCycleCount - beginCycleCount;
+					
+					// Some debug stuff for timing
+					real64 FPS = 0.0f;
+                    real64 MCPF = ((real64)cyclesElapsed / (1000.0f * 1000.0f));
+                    char FPSBuffer[256];
+//                     _snprintf_s(FPSBuffer, sizeof(FPSBuffer), "%.02fms/f,  %.02ff/s,  %.02fmc/f\n", msPerFrame, FPS, MCPF);
+                    OutputDebugStringA(FPSBuffer);
 				}
 			}
 		}
