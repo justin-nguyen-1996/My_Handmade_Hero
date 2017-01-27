@@ -407,8 +407,7 @@ inline LARGE_INTEGER Win32_getWallClock() {
 
 // WinMain
 int CALLBACK
-WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
-{
+WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
 	// Some basic setup
 	
 	// Get the system's performance frequency for profiling purposes
@@ -609,7 +608,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 					// Fill the sound buffer with data
 					if (soundIsValid) { Win32_FillSoundBuffer(&soundInfo, byteToLock, bytesToWrite, &SoundBuffer); }
 
-					// Calculate the timing differences and output as debug info
+					// Calculate the timing differences
 					LARGE_INTEGER workCounter = Win32_getWallClock();
 					real32 secondsElapsedForWork = Win32_getSecondsElapsed(beginCounter, workCounter);
 					real32 secondsElapsedForFrame = secondsElapsedForWork;
