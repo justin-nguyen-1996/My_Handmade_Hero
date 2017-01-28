@@ -13,31 +13,9 @@ typedef double real64;
 #include <dsound.h>
 #include <math.h> // TODO: temp include
 #include <malloc.h> // TODO: temp include
+#include "win32_handmade.h"
 #include "handmade.h"
 #include "handmade.cpp"
-
-// Structs
-struct win32_Buffer {
-	BITMAPINFO BitmapInfo;
-	void* BitmapMemory;
-	int Width;
-	int Height;
-	int Pitch;
-};
-
-struct win32_WinDim {
-	int Width;
-	int Height;
-};
-
-struct win32_SoundInfo {
-	int samplesPerSecond;
-	uint32_t runningSampleIndex;
-	int bytesPerSample;
-	int secondaryBufferSize;
-	real32 tSine;
-	int latencySampleCount;
-};
 
 // Globals
 static bool Running;
@@ -299,6 +277,7 @@ static void Win32_ResizeDibSection(win32_Buffer* buffer, int Width, int Height)
 	int BytesPerPixel = 4;
 	buffer->Width = Width; buffer->Height = Height;
 	buffer->Pitch = Width * BytesPerPixel;
+	buffer->BytesPerPixel = BytesPerPixel;
 
 	// Setup the bit map info header
 	buffer->BitmapInfo.bmiHeader.biSize = sizeof(buffer->BitmapInfo.bmiHeader);
@@ -311,6 +290,7 @@ static void Win32_ResizeDibSection(win32_Buffer* buffer, int Width, int Height)
 	// Allocate memory for our DIB section
 	int BitmapMemorySize = (buffer->Width * buffer->Height) * (BytesPerPixel);
 	buffer->BitmapMemory = VirtualAlloc(0, BitmapMemorySize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+	buffer->Pitch = Width * BytesPerPixel;
 }
 
 // Have Windows display our buffer and scale it as appropriate
@@ -405,25 +385,35 @@ inline LARGE_INTEGER Win32_getWallClock() {
 	return res;
 }
 
-static void Win32_debugDrawVertical(win32_Buffer* GlobalBackBuffer, int x, int top, int bottom) {
-	
+static void Win32_debugDrawVertical(win32_Buffer* globalBackBuffer, int x, int top, int bottom, uint32_t color) {
+	uint8_t* pixel = (uint8_t*) globalBackBuffer->BitmapMemory +
+								x * globalBackBuffer->BytesPerPixel + 
+								top * globalBackBuffer->Pitch;
+	for (int y = 0; y < bottom; ++y) {
+		*(uint32_t*)pixel = color;
+		pixel += globalBackBuffer->Pitch;
+	}
 }
 
-static void Win32_debugSyncDisplay(win32_Buffer* GlobalBackBuffer, 
+static void Win32_debugSyncDisplay(win32_Buffer* globalBackBuffer, 
 								   int lastPlayCursorCount,
-								   DWORD* debugLastPlayCursor, 
+								   DWORD* lastPlayCursor, 
 								   win32_SoundInfo* soundInfo,
 								   real32 targetSecsPerFrame) 
 {
 	int padX = 16; 
 	int padY = 16;
 	int top = padY;
-	int bottom = GlobalBackBuffer->Height - padY;
+	int bottom = globalBackBuffer->Height - padY;
+	
+	real32 c = ((real32)globalBackBuffer->Width - 2*padX) / (real32)soundInfo->secondaryBufferSize;
 	
 	for (int playCursorIndex = 0; playCursorIndex < lastPlayCursorCount; ++playCursorIndex) {
-		real32 c = ((real32)GlobalBackBuffer->Width - 2*padX) / (real32)soundInfo->secondaryBufferSize;
-		int x = padX + (int) (c * (real32)debugLastPlayCursor[lastPlayCursorIndex]);
-		Win32_debugDrawVertical(GlobalBackBuffer, x, top, bottom);
+		DWORD thisPlayCursor = lastPlayCursor[playCursorIndex];
+		assert(thisPlayCursor < soundInfo->secondaryBufferSize);
+		real32 xReal32 = (c * (real32)thisPlayCursor);
+		int x = padX + (int)xReal32;
+		Win32_debugDrawVertical(globalBackBuffer, x, top, bottom, 0xFFFFFFFF);
 	}
 }
 
@@ -456,8 +446,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 	Win32_ResizeDibSection(&GlobalBackBuffer, 1280, 720);
 
 	// Set the monitor refresh rate TODO: shouldn't have to manually hardcode this
-	#define monitorRefreshHz = 60;
-	#define gameUpdateHz = (monitorRefreshHz / 2);
+	#define monitorRefreshHz     60
+	#define gameUpdateHz         (monitorRefreshHz / 2)
 	real32 targetSecsPerFrame = 1.0f / (real32) gameUpdateHz;
 
 	// Register the window and create the window
@@ -467,6 +457,21 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 		if (WindowHandle) {
 			Running = true;
 			HDC DeviceContext = GetDC(WindowHandle);
+
+#if 0
+			// This tests the PlayCursor/WriteCursor update frequency
+            while(GlobalRunning)
+            {
+                DWORD PlayCursor;
+                DWORD WriteCursor;
+                GlobalSecondaryBuffer->GetCurrentPosition(&PlayCursor, &WriteCursor);
+
+                char TextBuffer[256];
+                _snprintf_s(TextBuffer, sizeof(TextBuffer),
+                            "PC:%u WC:%u\n", PlayCursor, WriteCursor);
+                OutputDebugStringA(TextBuffer);
+            }
+#endif	
 
 			// TODO: temp sound vars
 			win32_SoundInfo soundInfo = {};
@@ -501,19 +506,21 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 				LARGE_INTEGER beginCounter = Win32_getWallClock();
 				uint64_t beginCycleCount = __rdtsc();
 
+				/* temp stuff */
+
 				// TODO: some temp stuff for our input
 				GameInput input[2] = {};
 				GameInput* newInput = &input[0];
 				GameInput* oldInput = &input[1];
 
-				// TODO: temp var
+				// TODO: temp vars
 				DWORD debugLastPlayCursorIndex = 0;
-				DWORD debugLastPlayCursor[gameUpdateHZ] = {};
+				DWORD debugLastPlayCursor[gameUpdateHz / 2] = {};
 
 				// Message Loop
 				while (Running) {
 
-					// Keyboard Input
+					/* Keyboard Input */
 					// Zero the keyboard controller input
 					GameControllerInput* oldKeyboardController = getController(oldInput, 0);
 					GameControllerInput* newKeyboardController = getController(newInput, 0);
@@ -522,13 +529,14 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 
 					// For each button, set the new button state to the old button state
 					for (int buttonIndex = 0; buttonIndex < arrayCount(newKeyboardController->buttons); ++buttonIndex) {
-						newKeyboardController->buttons[buttonIndex].endedDown = oldKeyboardController->buttons[buttonIndex].endedDown;
+						newKeyboardController->buttons[buttonIndex].endedDown 
+							= oldKeyboardController->buttons[buttonIndex].endedDown;
 					}
 
 					// Process keyboard messages
 					Win32_ProcessPendingMessages(newKeyboardController);
 
-					// Gamepad Input
+					/* Gamepad Input */
 					// In case they add more than four controllers some day (five controllers including keyboard)
 					DWORD maxControllerCount = XUSER_MAX_COUNT;
 					if (maxControllerCount > arrayCount(newInput->controllers) - 1) { maxControllerCount = arrayCount(newInput->controllers) - 1; }
@@ -587,18 +595,19 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 							newController->isConnected = false;
 						}
 					}
+					
+					/* some temp win32 platform stuff */
 
 					// TODO: some temp stuff for Direct Sound output test
-					DWORD playCursor = 0; DWORD writeCursor = 0;
 					DWORD byteToLock = 0; DWORD targetCursor = 0; DWORD bytesToWrite = 0;
-					bool soundIsValid = false;
+					bool soundIsValid = false; DWORD lastPlayCursor = 0;
 
-					if (SUCCEEDED(SecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor))) { // Get locs of play and write cursors, where to start writing
+					if (soundIsValid) { // Get locs of play and write cursors, where to start writing
 						// Get the byte to lock, convert samples to bytes and wrap
 						byteToLock = (soundInfo.runningSampleIndex * soundInfo.bytesPerSample) % soundInfo.secondaryBufferSize;
 
 						// Get the target cursor position
-						targetCursor = (playCursor + (soundInfo.latencySampleCount * soundInfo.bytesPerSample))   %   soundInfo.secondaryBufferSize;
+						targetCursor = (lastPlayCursor + (soundInfo.latencySampleCount * soundInfo.bytesPerSample))   %   soundInfo.secondaryBufferSize;
 
 						// Get the number of bytes to write into the sound buffer, how much to write
 						if (byteToLock > targetCursor) { bytesToWrite = soundInfo.secondaryBufferSize - byteToLock + targetCursor; }
@@ -632,7 +641,22 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 					 */
 
 					// Fill the sound buffer with data
-					if (soundIsValid) { Win32_FillSoundBuffer(&soundInfo, byteToLock, bytesToWrite, &SoundBuffer); }
+					if (soundIsValid) { 
+#if HANDMADE_INTERNAL	
+						DWORD playCursor;
+						DWORD writeCursor;
+						SecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor);
+						char TextBuffer[256];
+//                         _snprintf_s(TextBuffer, sizeof(TextBuffer),
+//                                     "LPC:%u BTL:%u TC:%u BTW:%u - PC:%u WC:%u\n",
+//                                     LastPlayCursor, ByteToLock, TargetCursor, BytesToWrite,
+//                                     PlayCursor, WriteCursor);
+                        OutputDebugStringA(TextBuffer);
+#endif	
+						Win32_FillSoundBuffer(&soundInfo, byteToLock, bytesToWrite, &SoundBuffer); 
+					}
+
+					/* timing stuff to adjust our frame rate */
 
 					// Calculate the timing differences
 					LARGE_INTEGER workCounter = Win32_getWallClock();
@@ -648,7 +672,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 						}
 
 						real32 testSecondsElapsedForFrame = Win32_getSecondsElapsed(beginCounter, Win32_getWallClock());
-						assert(testSecondsElapsedForFrame < targetSecsPerFrame);
+// 						TODO: assert(testSecondsElapsedForFrame < targetSecsPerFrame);
 
 						while (secondsElapsedForFrame < targetSecsPerFrame) {
                             secondsElapsedForFrame = Win32_getSecondsElapsed(beginCounter, Win32_getWallClock());
@@ -672,6 +696,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 					debugLastPlayCursor[debugLastPlayCursorIndex++] = playCursor;
 					if (debugLastPlayCursorIndex > arrayCount(debugLastPlayCursor)) { debugLastPlayCursorIndex = 0; }
 #endif
+
+					/* end of loop stuff - swapping old/new inputs, resetting counters, ending performance timing stuff */
 
 					// Swap the old and new inputs
 					GameInput* tempInput = oldInput;
