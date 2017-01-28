@@ -405,11 +405,33 @@ inline LARGE_INTEGER Win32_getWallClock() {
 	return res;
 }
 
+static void Win32_debugDrawVertical(win32_Buffer* GlobalBackBuffer, int x, int top, int bottom) {
+	
+}
+
+static void Win32_debugSyncDisplay(win32_Buffer* GlobalBackBuffer, 
+								   int lastPlayCursorCount,
+								   DWORD* debugLastPlayCursor, 
+								   win32_SoundInfo* soundInfo,
+								   real32 targetSecsPerFrame) 
+{
+	int padX = 16; 
+	int padY = 16;
+	int top = padY;
+	int bottom = GlobalBackBuffer->Height - padY;
+	
+	for (int playCursorIndex = 0; playCursorIndex < lastPlayCursorCount; ++playCursorIndex) {
+		real32 c = ((real32)GlobalBackBuffer->Width - 2*padX) / (real32)soundInfo->secondaryBufferSize;
+		int x = padX + (int) (c * (real32)debugLastPlayCursor[lastPlayCursorIndex]);
+		Win32_debugDrawVertical(GlobalBackBuffer, x, top, bottom);
+	}
+}
+
 // WinMain
 int CALLBACK
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
 	// Some basic setup
-	
+
 	// Get the system's performance frequency for profiling purposes
 	LARGE_INTEGER PerformanceFreqRes;
 	QueryPerformanceFrequency(&PerformanceFreqRes);
@@ -434,8 +456,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 	Win32_ResizeDibSection(&GlobalBackBuffer, 1280, 720);
 
 	// Set the monitor refresh rate TODO: shouldn't have to manually hardcode this
-	int monitorRefreshHz = 60;
-	int gameUpdateHz = monitorRefreshHz / 2;
+	#define monitorRefreshHz = 60;
+	#define gameUpdateHz = (monitorRefreshHz / 2);
 	real32 targetSecsPerFrame = 1.0f / (real32) gameUpdateHz;
 
 	// Register the window and create the window
@@ -484,6 +506,10 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 				GameInput* newInput = &input[0];
 				GameInput* oldInput = &input[1];
 
+				// TODO: temp var
+				DWORD debugLastPlayCursorIndex = 0;
+				DWORD debugLastPlayCursor[gameUpdateHZ] = {};
+
 				// Message Loop
 				while (Running) {
 
@@ -498,7 +524,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 					for (int buttonIndex = 0; buttonIndex < arrayCount(newKeyboardController->buttons); ++buttonIndex) {
 						newKeyboardController->buttons[buttonIndex].endedDown = oldKeyboardController->buttons[buttonIndex].endedDown;
 					}
-					
+
 					// Process keyboard messages
 					Win32_ProcessPendingMessages(newKeyboardController);
 
@@ -519,7 +545,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 
 							XINPUT_GAMEPAD* pad = &ControllerState.Gamepad;
 							newController->isConnected = true;
-							
+
 							// Normalize the x & y stick
 							newController->stickAverageX = Win32_ProcessXInputStickPos(pad->sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
 							newController->stickAverageY = Win32_ProcessXInputStickPos(pad->sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
@@ -535,19 +561,19 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 
 							// Process each of the buttons
 							real32 threshold = 0.5f;
-							Win32_ProcessButton( (newController->stickAverageX   <   -threshold) ? 1 : 0, 
-												 &oldController->moveLeft, 1, 
+							Win32_ProcessButton( (newController->stickAverageX   <   -threshold) ? 1 : 0,
+												 &oldController->moveLeft, 1,
 												 &newController->moveLeft);
 							Win32_ProcessButton( (newController->stickAverageX   >   threshold) ? 1 : 0,
-												 &oldController->moveRight, 1, 
+												 &oldController->moveRight, 1,
 												 &newController->moveRight);
-							Win32_ProcessButton( (newController->stickAverageY   <   -threshold) ? 1 : 0, 
+							Win32_ProcessButton( (newController->stickAverageY   <   -threshold) ? 1 : 0,
 												 &oldController->moveDown, 1,
 												 &newController->moveDown);
-							Win32_ProcessButton( (newController->stickAverageY   >   threshold) ? 1 : 0, 
+							Win32_ProcessButton( (newController->stickAverageY   >   threshold) ? 1 : 0,
 												 &oldController->moveUp, 1,
 												 &newController->moveUp);
-							
+
 							Win32_ProcessButton(pad->wButtons, &oldController->actionDown,         XINPUT_GAMEPAD_A,              &newController->actionDown);
 							Win32_ProcessButton(pad->wButtons, &oldController->actionRight,         XINPUT_GAMEPAD_B,              &newController->actionRight);
 							Win32_ProcessButton(pad->wButtons, &oldController->actionLeft,          XINPUT_GAMEPAD_X,              &newController->actionLeft);
@@ -556,7 +582,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 							Win32_ProcessButton(pad->wButtons, &oldController->rShoulder,     XINPUT_GAMEPAD_RIGHT_SHOULDER, &newController->rShoulder);
 							Win32_ProcessButton(pad->wButtons, &oldController->start,     XINPUT_GAMEPAD_START, &newController->start);
 							Win32_ProcessButton(pad->wButtons, &oldController->back,     XINPUT_GAMEPAD_BACK, &newController->back);
-							
+
 						} else { // controller not plugged in
 							newController->isConnected = false;
 						}
@@ -612,27 +638,41 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 					LARGE_INTEGER workCounter = Win32_getWallClock();
 					real32 secondsElapsedForWork = Win32_getSecondsElapsed(beginCounter, workCounter);
 					real32 secondsElapsedForFrame = secondsElapsedForWork;
-					
+
 					// If time per frame is not enough (didn't hit our target seconds per frame) then sleep until it does hit our target
 					if (secondsElapsedForFrame < targetSecsPerFrame) {
-						
+
 						if (sleepIsGranular) {
 							DWORD sleepMilliSecs = (DWORD) (1000.0f * (targetSecsPerFrame - secondsElapsedForFrame));
 							if (sleepMilliSecs > 0) { Sleep(sleepMilliSecs); }
 						}
-						
+
 						real32 testSecondsElapsedForFrame = Win32_getSecondsElapsed(beginCounter, Win32_getWallClock());
 						assert(testSecondsElapsedForFrame < targetSecsPerFrame);
-                        
+
 						while (secondsElapsedForFrame < targetSecsPerFrame) {
                             secondsElapsedForFrame = Win32_getSecondsElapsed(beginCounter, Win32_getWallClock());
 						}
 					}
-					
+
 					// Use the Windows platform to display our buffer
 					win32_WinDim Dimension = Win32_GetWinDim(WindowHandle);
-					Win32_DisplayBuffer(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
 					
+#if HANDMADE_INTERNAL
+					Win32_debugSyncDisplay(&GlobalBackBuffer, arrayCount(debugLastPlayCursor), 
+										   debugLastPlayCursor, &soundInfo, targetSecsPerFrame);
+#endif	
+					
+					Win32_DisplayBuffer(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
+
+#if HANDMADE_INTERNAL
+					DWORD playCursor;
+					DWORD writeCursor;
+					SecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor);
+					debugLastPlayCursor[debugLastPlayCursorIndex++] = playCursor;
+					if (debugLastPlayCursorIndex > arrayCount(debugLastPlayCursor)) { debugLastPlayCursorIndex = 0; }
+#endif
+
 					// Swap the old and new inputs
 					GameInput* tempInput = oldInput;
 					oldInput = newInput;
@@ -642,12 +682,12 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 					LARGE_INTEGER endCounter = Win32_getWallClock();
 					beginCounter = endCounter;
 					real32 msPerFrame = 1000.0f * Win32_getSecondsElapsed(beginCounter, endCounter);
-					
+
 					// End our performance query
 					uint64_t endCycleCount = __rdtsc();
 					beginCycleCount = endCycleCount;
 					uint64_t cyclesElapsed = endCycleCount - beginCycleCount;
-					
+
 					// Some debug stuff for timing
 					real64 FPS = 0.0f;
                     real64 MCPF = ((real64)cyclesElapsed / (1000.0f * 1000.0f));
