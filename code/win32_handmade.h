@@ -24,4 +24,9 @@ struct win32_SoundInfo {
 	int latencySampleCount;
 };
 
+struct win32_DebugTimeMarker {
+	DWORD playCursor;
+	DWORD writeCursor;
+};
+
 #endif
