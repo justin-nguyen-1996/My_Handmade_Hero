@@ -456,8 +456,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 	Win32_ResizeDibSection(&GlobalBackBuffer, 1280, 720);
 
 	// Set the monitor refresh rate TODO: shouldn't have to manually hardcode this
-	#define monitorRefreshHz     60
-	#define gameUpdateHz         (monitorRefreshHz / 2)
+	#define framesOfAudioLatency   3
+	#define monitorRefreshHz       60
+	#define gameUpdateHz           (monitorRefreshHz / 2)
 	real32 targetSecsPerFrame = 1.0f / (real32) gameUpdateHz;
 
 	// Register the window and create the window
@@ -486,7 +487,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 			// TODO: temp sound vars
 			win32_SoundInfo soundInfo = {};
 			soundInfo.samplesPerSecond = 48000;
-			soundInfo.latencySampleCount = soundInfo.samplesPerSecond / 15;
+			soundInfo.latencySampleCount = framesOfAudioLatency * (soundInfo.samplesPerSecond / gameUpdateHz);
 			soundInfo.bytesPerSample = sizeof(int16_t) * 2;
 			soundInfo.secondaryBufferSize = soundInfo.samplesPerSecond * soundInfo.bytesPerSample;
 
@@ -525,8 +526,12 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 				int debugTimeMarkerIndex = 0;
 				win32_DebugTimeMarker debugTimeMarkers[gameUpdateHz / 2] = {};
 
-				// Message Loop
 				uint64_t beginCycleCount = __rdtsc();
+				
+				DWORD lastPlayCursor = 0;
+				bool soundIsValid = false;
+				
+				// Message Loop
 				while (Running) {
 
 					/* Keyboard Input */
@@ -609,7 +614,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 
 					// TODO: some temp stuff for Direct Sound output test
 					DWORD byteToLock = 0; DWORD targetCursor = 0; DWORD bytesToWrite = 0;
-					bool soundIsValid = false; DWORD lastPlayCursor = 0;
 
 					if (soundIsValid) { // Get locs of play and write cursors, where to start writing
 						// Get the byte to lock, convert samples to bytes and wrap
@@ -699,15 +703,25 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 					Win32_debugSyncDisplay(&GlobalBackBuffer, arrayCount(debugTimeMarkers),
 										   debugTimeMarkers, &soundInfo, targetSecsPerFrame);
 #endif
-
+					
 					Win32_DisplayBuffer(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
+					DWORD playCursor;
+					DWORD writeCursor;
+					if (SecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor) == DS_OK) {
+						lastPlayCursor = playCursor;
+						if (! soundIsValid) {
+							soundInfo.runningSampleIndex = writeCursor / soundInfo.bytesPerSample;
+							soundIsValid = true;
+						}
+					} else {
+						soundIsValid = false;
+					}
 
 #if HANDMADE_INTERNAL
 					win32_DebugTimeMarker* marker = &debugTimeMarkers[debugTimeMarkerIndex++];
 					if (debugTimeMarkerIndex > arrayCount(debugTimeMarkers)) { debugTimeMarkerIndex = 0; }
-					DWORD playCursor;
-					DWORD writeCursor;
-					SecondaryBuffer->GetCurrentPosition(&marker->playCursor, &marker->writeCursor);
+					marker->playCursor = playCursor;
+					marker->writeCursor = writeCursor;
 #endif
 
 					/* end of loop stuff - swapping old/new inputs, resetting counters, ending performance timing stuff */
