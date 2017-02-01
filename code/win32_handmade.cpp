@@ -403,7 +403,6 @@ inline void Win32_drawSoundBufferMarker(win32_Buffer* globalBackBuffer,
 	real32 xReal32 = (c * (real32)value);
 	int x = padX + (int)xReal32;
 	Win32_debugDrawVertical(globalBackBuffer, x, top, bottom, 0xFFFFFFFF);
-	
 }
 
 static void Win32_debugSyncDisplay(win32_Buffer* globalBackBuffer,
@@ -423,7 +422,6 @@ static void Win32_debugSyncDisplay(win32_Buffer* globalBackBuffer,
 		win32_DebugTimeMarker* thisMarker = &markers[markerIndex];
 		Win32_drawSoundBufferMarker(globalBackBuffer, soundInfo, c, padX, top, bottom, thisMarker->playCursor, 0xFFFFFFFF);
 		Win32_drawSoundBufferMarker(globalBackBuffer, soundInfo, c, padX, top, bottom, thisMarker->playCursor, 0xFFFF0000);
-   	
 	}
 }
 
