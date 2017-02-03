@@ -402,7 +402,7 @@ inline void Win32_drawSoundBufferMarker(win32_Buffer* globalBackBuffer,
 	assert(value < soundInfo->secondaryBufferSize);
 	real32 xReal32 = (c * (real32)value);
 	int x = padX + (int)xReal32;
-	Win32_debugDrawVertical(globalBackBuffer, x, top, bottom, 0xFFFFFFFF);
+	Win32_debugDrawVertical(globalBackBuffer, x, top, bottom, color);
 }
 
 static void Win32_debugSyncDisplay(win32_Buffer* globalBackBuffer,
@@ -421,7 +421,7 @@ static void Win32_debugSyncDisplay(win32_Buffer* globalBackBuffer,
 	for (int markerIndex = 0; markerIndex < markerCount; ++markerIndex) {
 		win32_DebugTimeMarker* thisMarker = &markers[markerIndex];
 		Win32_drawSoundBufferMarker(globalBackBuffer, soundInfo, c, padX, top, bottom, thisMarker->playCursor, 0xFFFFFFFF);
-		Win32_drawSoundBufferMarker(globalBackBuffer, soundInfo, c, padX, top, bottom, thisMarker->playCursor, 0xFFFF0000);
+		Win32_drawSoundBufferMarker(globalBackBuffer, soundInfo, c, padX, top, bottom, thisMarker->writeCursor, 0xFFFF0000);
 	}
 }
 
@@ -683,7 +683,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 						}
 
 						real32 testSecondsElapsedForFrame = Win32_getSecondsElapsed(beginCounter, Win32_getWallClock());
-// 						TODO: assert(testSecondsElapsedForFrame < targetSecsPerFrame);
+// 						assert(testSecondsElapsedForFrame < targetSecsPerFrame);
 
 						while (secondsElapsedForFrame < targetSecsPerFrame) {
                             secondsElapsedForFrame = Win32_getSecondsElapsed(beginCounter, Win32_getWallClock());
