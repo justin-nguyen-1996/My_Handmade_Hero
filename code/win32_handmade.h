@@ -20,6 +20,7 @@ struct win32_SoundInfo {
 	uint32_t runningSampleIndex;
 	int bytesPerSample;
 	DWORD secondaryBufferSize;
+	DWORD safetyBytes;
 	real32 tSine;
 	int latencySampleCount;
 };

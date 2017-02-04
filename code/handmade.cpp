@@ -38,8 +38,7 @@ static void GameOutputSound(GameSoundBuffer* SoundBuffer, int toneHertz) {
 
 static void gameUpdateAndRender(GameMemory* memory,
 								GameInput* input, 
-								GameImageBuffer* imageBuffer, 
-								GameSoundBuffer* soundBuffer) 
+								GameImageBuffer* imageBuffer) 
 {
 	GameState* gameState = (GameState*) memory->permanentStorage;
 
@@ -72,6 +71,11 @@ static void gameUpdateAndRender(GameMemory* memory,
 		}	
 	}
 	
-	GameOutputSound(soundBuffer, gameState->toneHertz);
+	// Display the gradient
 	RenderWeirdGradient(imageBuffer, gameState->blueOffset, gameState->greenOffset);
+}
+
+static void gameGetSoundSamples(GameMemory* memory, GameSoundBuffer* soundBuffer) {
+	GameState* gameState = (GameState*) memory->permanentStorage;
+	GameOutputSound(soundBuffer, gameState->toneHertz);
 }

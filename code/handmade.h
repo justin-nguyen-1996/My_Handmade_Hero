@@ -111,7 +111,9 @@ struct GameMemory {
 // Services the game provides to the platform layer
 static void gameUpdateAndRender(GameMemory*      memory,
 								GameInput*       input,
-								GameImageBuffer* imageBuffer,
+								GameImageBuffer* imageBuffer);
+
+static void gameGetSoundSamples(GameMemory*      memory,
 								GameSoundBuffer* soundBuffer);
 
 // Services the game provides to the platform layer
