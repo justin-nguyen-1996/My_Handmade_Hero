@@ -19,6 +19,17 @@
 	 #define   assert(expression)
 #endif
 
+// Includes
+#include <math.h>
+#include <stdint.h>
+
+// Defines
+#define PI 3.14159265359f
+
+// Typedefs
+typedef float real32;
+typedef double real64;
+
 // Function macros
 #define   arrayCount(array)   (sizeof(array) / sizeof(array[0]))
 #define   Kilobytes(val)      (val * 1024LL)
@@ -26,15 +37,22 @@
 #define   Gigabytes(val)      (Megabytes(val) * 1024LL)
 #define   Terabytes(val)      (Gigabytes(val) * 1024LL)
 
-// HANDMADE_INTERNAL function macros
 #if HANDMADE_INTERNAL
+
 	struct DebugReadFile {
 		uint32_t contentSize;
 		void* contents;
 	};
-	static DebugReadFile DEBUG_Platform_readEntireFile(char* fileName);
-	static void DEBUG_Platform_freeFileMemory(void* memory);
-	static bool DEBUG_Platform_writeEntireFile(char* fileName, uint32_t memorySize, void* memory);
+
+	#define DEBUG_PLATFORM_FREE_FILE_MEMORY(name) void name(void* memory)
+	typedef DEBUG_PLATFORM_FREE_FILE_MEMORY(debug_platform_free_file_memory);
+
+	#define DEBUG_PLATFORM_READ_ENTIRE_FILE(name) DebugReadFile name(char* fileName)
+	typedef DEBUG_PLATFORM_READ_ENTIRE_FILE(debug_platform_read_entire_file);
+	
+	#define DEBUG_PLATFORM_WRITE_ENTIRE_FILE(name) bool name(char* fileName, uint32_t memorySize, void* memory)
+	typedef DEBUG_PLATFORM_WRITE_ENTIRE_FILE(debug_platform_write_entire_file);
+	
 #endif
 
 struct GameImageBuffer {
@@ -69,12 +87,12 @@ struct GameControllerInput {
 			GameButtonState moveDown;
 			GameButtonState moveRight;
 			GameButtonState moveLeft;
-			
+
 			GameButtonState actionUp;
 			GameButtonState actionDown;
 			GameButtonState actionRight;
 			GameButtonState actionLeft;
-			
+
 			GameButtonState lShoulder;
 			GameButtonState rShoulder;
 
@@ -102,21 +120,32 @@ struct GameState {
 
 struct GameMemory {
 	bool isInit;
+	
 	uint64_t permanentStorageSize;
 	void* permanentStorage;
 	uint64_t transientStorageSize;
 	void* transientStorage;
+
+	debug_platform_free_file_memory* DEBUG_Platform_FreeFileMemory;
+	debug_platform_read_entire_file* DEBUG_Platform_ReadEntireFile;
+	debug_platform_write_entire_file* DEBUG_Platform_WriteEntireFile;
 };
 
-// Services the game provides to the platform layer
-static void gameUpdateAndRender(GameMemory*      memory,
-								GameInput*       input,
-								GameImageBuffer* imageBuffer);
+/******************************************************************/
+/******** Services the game provides to the platform layer ********/
+/******************************************************************/
 
-static void gameGetSoundSamples(GameMemory*      memory,
-								GameSoundBuffer* soundBuffer);
+#define GAME_UPDATE_AND_RENDER(name) void name(GameMemory* memory, GameInput* input, GameImageBuffer* imageBuffer)
+typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
+GAME_UPDATE_AND_RENDER(GameUpdateAndRenderStub) { }
 
-// Services the game provides to the platform layer
+#define GAME_GET_SOUND_SAMPLES(name) void name(GameMemory* memory, GameSoundBuffer* soundBuffer)
+typedef GAME_GET_SOUND_SAMPLES(game_get_sound_samples);
+GAME_GET_SOUND_SAMPLES(GameGetSoundSamplesStub) { }
+
+/******************************************************************/
+/******** Services the platform provides to the game layer ********/
+/******************************************************************/
 
 // Helper functions
 inline uint32_t safeTruncateUInt64(uint64_t value) {

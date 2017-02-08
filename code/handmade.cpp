@@ -36,19 +36,17 @@ static void GameOutputSound(GameSoundBuffer* SoundBuffer, int toneHertz) {
 	}
 }
 
-static void gameUpdateAndRender(GameMemory* memory,
-								GameInput* input, 
-								GameImageBuffer* imageBuffer) 
-{
+GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
+	
 	GameState* gameState = (GameState*) memory->permanentStorage;
 
 	// Initialize the game state and memory
 	if (! memory->isInit) {
 		char* fileName = __FILE__; // TODO: temp
-		DebugReadFile file = DEBUG_Platform_readEntireFile(fileName);
+		DebugReadFile file = memory->DEBUG_Platform_ReadEntireFile(fileName);
 		if (file.contents) { 
-			DEBUG_Platform_writeEntireFile("../data/test.out", file.contentSize, file.contents);
-			DEBUG_Platform_freeFileMemory(file.contents); 
+			memory->DEBUG_Platform_WriteEntireFile("../data/test.out", file.contentSize, file.contents);
+			memory->DEBUG_Platform_FreeFileMemory(file.contents); 
 		}
 		gameState->toneHertz = 256;
 		memory->isInit = true;
@@ -75,7 +73,7 @@ static void gameUpdateAndRender(GameMemory* memory,
 	RenderWeirdGradient(imageBuffer, gameState->blueOffset, gameState->greenOffset);
 }
 
-static void gameGetSoundSamples(GameMemory* memory, GameSoundBuffer* soundBuffer) {
+GAME_GET_SOUND_SAMPLES(gameGetSoundSamples) {
 	GameState* gameState = (GameState*) memory->permanentStorage;
 	GameOutputSound(soundBuffer, gameState->toneHertz);
 }

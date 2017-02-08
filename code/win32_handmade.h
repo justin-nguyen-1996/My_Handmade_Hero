@@ -26,8 +26,14 @@ struct win32_SoundInfo {
 };
 
 struct win32_DebugTimeMarker {
-	DWORD playCursor;
-	DWORD writeCursor;
+	DWORD outputPlayCursor;
+	DWORD outputWriteCursor;
+	DWORD outputLocation;
+	DWORD outputByteCount;
+	DWORD expectedFlipPlayCursor;
+	
+	DWORD flipPlayCursor;
+	DWORD flipWriteCursor;
 };
 
 #endif
