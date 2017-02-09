@@ -116,6 +116,7 @@ struct GameState {
 	int toneHertz;
 	int blueOffset;
 	int greenOffset;
+	real32 tSine;
 };
 
 struct GameMemory {

@@ -36,4 +36,11 @@ struct win32_DebugTimeMarker {
 	DWORD flipWriteCursor;
 };
 
+struct win32_GameCode {
+	HMODULE gameCodeDLL;
+	game_update_and_render* updateAndRender;
+	game_get_sound_samples* getSoundSamples;
+	bool isValid;
+};
+
 #endif

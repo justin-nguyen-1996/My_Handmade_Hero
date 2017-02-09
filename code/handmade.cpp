@@ -20,23 +20,23 @@ static void RenderWeirdGradient(GameImageBuffer* buffer, int xOffset, int yOffse
 	}
 }
 
-static void GameOutputSound(GameSoundBuffer* SoundBuffer, int toneHertz) {
-	static real32 tSine;
+static void GameOutputSound(GameState* gameState, GameSoundBuffer* SoundBuffer, int toneHertz) {
 	int16_t toneVolume = 3000;
 	int wavePeriod = SoundBuffer->samplesPerSecond / toneHertz;
 	int16_t* sampleOut = SoundBuffer->samples;
 
 	// Loop through the first region to write to the buffer, stereo sound is encoded as pairs of 16bit values (left, right)
 	for (int SampleIndex = 0; SampleIndex < SoundBuffer->sampleCount; ++SampleIndex) {
-		real32 sineValue = sinf(tSine);
+		real32 sineValue = sinf(gameState->tSine);
 		int16_t sampleValue = (int16_t) (sineValue * toneVolume);
 		*sampleOut++ = sampleValue;
 		*sampleOut++ = sampleValue;
-		tSine += 2.0f * PI * 1.0f / (real32) wavePeriod;
+		gameState->tSine += 2.0f * PI * 1.0f / (real32) wavePeriod;
+		if(gameState->tSine > 2.0f*PI) { gameState->tSine -= 2.0f*PI; }
 	}
 }
 
-GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
+extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	
 	GameState* gameState = (GameState*) memory->permanentStorage;
 
@@ -49,6 +49,7 @@ GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 			memory->DEBUG_Platform_FreeFileMemory(file.contents); 
 		}
 		gameState->toneHertz = 256;
+		gameState->tSine = 0.0f;
 		memory->isInit = true;
 	}
 	
@@ -73,7 +74,20 @@ GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	RenderWeirdGradient(imageBuffer, gameState->blueOffset, gameState->greenOffset);
 }
 
-GAME_GET_SOUND_SAMPLES(gameGetSoundSamples) {
+extern "C" GAME_GET_SOUND_SAMPLES(gameGetSoundSamples) {
 	GameState* gameState = (GameState*) memory->permanentStorage;
-	GameOutputSound(soundBuffer, gameState->toneHertz);
+	GameOutputSound(gameState, soundBuffer, gameState->toneHertz);
 }
+
+#if HANDMADE_WIN32
+
+#include "windows.h"
+BOOL WINAPI DllMain(
+	_In_  HINSTANCE hinstDLL,
+    _In_  DWORD fdwReason,
+    _In_  LPVOID lpvReserved) 
+{
+	return(TRUE);
+}
+
+#endif 
