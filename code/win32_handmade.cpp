@@ -463,9 +463,7 @@ inline FILETIME Win32_getLastWriteTime(char* fileName) {
     return lastWriteTime;
 }
 
-static win32_GameCode Win32_loadGameCode(char* sourceDLLName) {
-
-    char* tempDLLName = "handmade_temp.dll";
+static win32_GameCode Win32_loadGameCode(char* sourceDLLName, char* tempDLLName) {
 
     win32_GameCode res = {};
     CopyFile(sourceDLLName, tempDLLName, FALSE);
@@ -495,11 +493,43 @@ static void Win32_unloadGameCode(win32_GameCode* gameCode) {
     gameCode->getSoundSamples = GameGetSoundSamplesStub;
 }
 
+void catString(size_t sourceACount, char* sourceA,
+               size_t sourceBCount, char* sourceB,
+               size_t destCount, char* dest) 
+{
+    for (int i = 0; i < sourceACount; ++i) { *dest++ = *sourceA++; }
+    for (int i = 0; i < sourceBCount; ++i) { *dest++ = *sourceB++; }
+    *dest++ = 0;
+}
+
 // WinMain
 int CALLBACK
 WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    
     // Some basic setup
 
+    // Grabbing the executable's file name and location of where to start replacing path
+    char exeFileName[MAX_PATH];
+    DWORD sizeOfFileName = GetModuleFileName(0, exeFileName, sizeof(exeFileName));
+    char* onePastLastSlash = exeFileName;
+    for (char* scan = exeFileName; *scan; ++scan) {
+        if (*scan == '\\') { onePastLastSlash = scan + 1; }
+    }
+
+    // Set the DLL's name
+    char sourceGameCodeDLLFileName[] = "handmade.dll";
+    char sourceGameCodeDLLFullPath[MAX_PATH];
+    char tempGameCodeDLLFileName[] = "handmade_temp.dll";
+    char tempGameCodeDLLFullPath[MAX_PATH];
+
+    // Concat the two together to get the right path
+    catString(onePastLastSlash - exeFileName, exeFileName, 
+              sizeof(sourceGameCodeDLLFileName) - 1, sourceGameCodeDLLFileName,
+              sizeof(sourceGameCodeDLLFullPath), sourceGameCodeDLLFullPath);
+    catString(onePastLastSlash - exeFileName, exeFileName, 
+              sizeof(tempGameCodeDLLFileName) - 1, tempGameCodeDLLFileName,
+              sizeof(tempGameCodeDLLFullPath), tempGameCodeDLLFullPath);
+    
     // Get the system's performance frequency for profiling purposes
     LARGE_INTEGER PerformanceFreqRes;
     QueryPerformanceFrequency(&PerformanceFreqRes);
@@ -593,17 +623,16 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                 bool soundIsValid = false;
 
                 // Load the game code so we can grab function addresses
-                char* sourceDLLName = "handmade.dll";
-                win32_GameCode game = Win32_loadGameCode(sourceDLLName);
+                win32_GameCode game = Win32_loadGameCode(sourceGameCodeDLLFileName, tempGameCodeDLLFileName);
                 uint32_t loadCounter = 0;
 
                 while (Running) {
                     
                     // Instantaneous live code editing by checking if the file changed
-                    FILETIME newDLLWriteTime = Win32_getLastWriteTime(sourceDLLName);
+                    FILETIME newDLLWriteTime = Win32_getLastWriteTime(sourceGameCodeDLLFullPath);
                     if (CompareFileTime(&newDLLWriteTime, &game.DllLastWriteTime) != 0) {
                         Win32_unloadGameCode(&game);
-                        game = Win32_loadGameCode(sourceDLLName);
+                        game = Win32_loadGameCode(sourceGameCodeDLLFullPath, tempGameCodeDLLFullPath);
                         loadCounter = 0;
                     }
 

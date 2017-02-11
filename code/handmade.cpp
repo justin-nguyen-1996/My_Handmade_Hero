@@ -13,7 +13,7 @@ static void RenderWeirdGradient(GameImageBuffer* buffer, int xOffset, int yOffse
 			uint8_t blue = (uint8_t) (x + xOffset);
 			uint8_t green = (uint8_t) (y + yOffset);
 			uint8_t red;
-			*pixel++ = ((green << 8) | blue);
+			*pixel++ = ((green << 8) | (blue));
 		}
 
 		row += buffer->Pitch;
