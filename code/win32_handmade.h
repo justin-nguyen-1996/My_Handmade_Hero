@@ -38,6 +38,7 @@ struct win32_DebugTimeMarker {
 
 struct win32_GameCode {
 	HMODULE gameCodeDLL;
+	FILETIME DllLastWriteTime;
 	game_update_and_render* updateAndRender;
 	game_get_sound_samples* getSoundSamples;
 	bool isValid;

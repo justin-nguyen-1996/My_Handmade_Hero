@@ -79,15 +79,3 @@ extern "C" GAME_GET_SOUND_SAMPLES(gameGetSoundSamples) {
 	GameOutputSound(gameState, soundBuffer, gameState->toneHertz);
 }
 
-#if HANDMADE_WIN32
-
-#include "windows.h"
-BOOL WINAPI DllMain(
-	_In_  HINSTANCE hinstDLL,
-    _In_  DWORD fdwReason,
-    _In_  LPVOID lpvReserved) 
-{
-	return(TRUE);
-}
-
-#endif 

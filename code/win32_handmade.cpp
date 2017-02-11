@@ -402,7 +402,7 @@ inline void Win32_drawSoundBufferMarker(win32_Buffer* backBuffer,
 }
 
 static void Win32_debugSyncDisplay(win32_Buffer* globalBackBuffer,
-        int markerCount, 
+        int markerCount,
         win32_DebugTimeMarker* markers,
         int currentMarkerIndex,
         win32_SoundInfo* soundInfo,
@@ -452,11 +452,27 @@ static void Win32_debugSyncDisplay(win32_Buffer* globalBackBuffer,
     }
 }
 
-static win32_GameCode Win32_loadGameCode() {
+inline FILETIME Win32_getLastWriteTime(char* fileName) {
+    FILETIME lastWriteTime = {};
+    WIN32_FIND_DATA findData;
+    HANDLE fileHandle = FindFirstFileA(fileName, &findData);
+    if (fileHandle != INVALID_HANDLE_VALUE) {
+        lastWriteTime = findData.ftLastWriteTime;
+        FindClose(fileHandle);
+    }
+    return lastWriteTime;
+}
+
+static win32_GameCode Win32_loadGameCode(char* sourceDLLName) {
+
+    char* tempDLLName = "handmade_temp.dll";
 
     win32_GameCode res = {};
-    CopyFile("handmade.dll", "handmade_temp.dll", FALSE);
-    res.gameCodeDLL = LoadLibraryA("handmade_temp.dll");
+    CopyFile(sourceDLLName, tempDLLName, FALSE);
+    res.gameCodeDLL = LoadLibraryA(tempDLLName);
+
+    res.DllLastWriteTime = Win32_getLastWriteTime(sourceDLLName);
+
 
     if (res.gameCodeDLL) {
         res.updateAndRender = (game_update_and_render*) GetProcAddress(res.gameCodeDLL, "gameUpdateAndRender");
@@ -533,7 +549,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
             Win32_InitDirectSound(WindowHandle, soundInfo.samplesPerSecond, soundInfo.secondaryBufferSize);
             Win32_ClearBuffer(&soundInfo);
             SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
-            int16_t* samples = 
+            int16_t* samples =
                 (int16_t*) VirtualAlloc(0, soundInfo.secondaryBufferSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
 #if HANDMADE_INTERNAL
@@ -576,14 +592,18 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                 real32 audioLatencySeconds = 0;
                 bool soundIsValid = false;
 
-                win32_GameCode game = Win32_loadGameCode();
+                // Load the game code so we can grab function addresses
+                char* sourceDLLName = "handmade.dll";
+                win32_GameCode game = Win32_loadGameCode(sourceDLLName);
                 uint32_t loadCounter = 0;
 
                 while (Running) {
-
-                    if (loadCounter++ > 120) {
+                    
+                    // Instantaneous live code editing by checking if the file changed
+                    FILETIME newDLLWriteTime = Win32_getLastWriteTime(sourceDLLName);
+                    if (CompareFileTime(&newDLLWriteTime, &game.DllLastWriteTime) != 0) {
                         Win32_unloadGameCode(&game);
-                        game = Win32_loadGameCode();
+                        game = Win32_loadGameCode(sourceDLLName);
                         loadCounter = 0;
                     }
 
@@ -674,7 +694,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                     game.updateAndRender(&gameMemory, newInput, &imageBuffer);
 
                     LARGE_INTEGER audioWallClock = Win32_getWallClock();
-                    real32 fromBeginToAudioSeconds = Win32_getSecondsElapsed(flipWallClock, audioWallClock); 
+                    real32 fromBeginToAudioSeconds = Win32_getSecondsElapsed(flipWallClock, audioWallClock);
 
                     /*
                      * Note on audio latency:
@@ -688,11 +708,11 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                     DWORD writeCursor;
                     if (SecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor) == DS_OK) {
 
-                        /* sound output calculation 
+                        /* sound output calculation
                          *
                          * Safety amount = (in units of number of samples), dependent on game loop's update variability
                          * Look at play cursor and forecast future location of play cursor on the next frame boundary.
-                         * 
+                         *
                          * If write cursor is before that by our safety amount (low latency)
                          * 		--> target fill position is that frame boundary plus one frame
                          * Else if write cursor is after that by our safety amount (high latency)
@@ -707,7 +727,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                         // Get the byte to lock, convert samples to bytes and wrap
                         DWORD byteToLock = (soundInfo.runningSampleIndex * soundInfo.bytesPerSample) % soundInfo.secondaryBufferSize;
 
-                        // Some needed calculations and expected results 
+                        // Some needed calculations and expected results
                         DWORD expectedSoundBytesPerFrame = soundInfo.samplesPerSecond * soundInfo.bytesPerSample / gameUpdateHz;
                         DWORD expectedFrameBoundaryByte = playCursor + expectedSoundBytesPerFrame;
                         real32 secondsLeftUntilFlip = targetSecondsPerFrame - fromBeginToAudioSeconds;
@@ -715,14 +735,14 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 
                         // Get the safe write cursor (to account for jitter)
                         DWORD safeWriteCursor = writeCursor;
-                        if (safeWriteCursor < playCursor) { safeWriteCursor += soundInfo.secondaryBufferSize; } 
+                        if (safeWriteCursor < playCursor) { safeWriteCursor += soundInfo.secondaryBufferSize; }
                         assert(safeWriteCursor >= playCursor);
                         safeWriteCursor += soundInfo.safetyBytes;
 
                         // Get the target cursor based on audio card's latency
-                        DWORD targetCursor = 0; 
-                        bool audioCardIsLowLatency = (safeWriteCursor < expectedFrameBoundaryByte); 
-                        if (audioCardIsLowLatency) { targetCursor = (expectedFrameBoundaryByte + expectedSoundBytesPerFrame); } 
+                        DWORD targetCursor = 0;
+                        bool audioCardIsLowLatency = (safeWriteCursor < expectedFrameBoundaryByte);
+                        if (audioCardIsLowLatency) { targetCursor = (expectedFrameBoundaryByte + expectedSoundBytesPerFrame); }
                         else                       { targetCursor = (writeCursor + expectedSoundBytesPerFrame + soundInfo.safetyBytes); }
                         targetCursor = targetCursor % (soundInfo.secondaryBufferSize);
 
@@ -735,7 +755,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                         soundBuffer.samplesPerSecond = soundInfo.samplesPerSecond;
                         soundBuffer.sampleCount = bytesToWrite / soundInfo.bytesPerSample;
                         soundBuffer.samples = samples;
-                        game.getSoundSamples(&gameMemory, &soundBuffer); 
+                        game.getSoundSamples(&gameMemory, &soundBuffer);
 
 #if HANDMADE_INTERNAL
                         win32_DebugTimeMarker* marker = &debugTimeMarkers[debugTimeMarkerIndex];
@@ -791,7 +811,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                     win32_WinDim Dimension = Win32_GetWinDim(WindowHandle);
 
 #if HANDMADE_INTERNAL
-                    Win32_debugSyncDisplay(&GlobalBackBuffer, arrayCount(debugTimeMarkers), debugTimeMarkers, 
+                    Win32_debugSyncDisplay(&GlobalBackBuffer, arrayCount(debugTimeMarkers), debugTimeMarkers,
                             debugTimeMarkerIndex - 1, &soundInfo, targetSecondsPerFrame);
 #endif
 
@@ -828,7 +848,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 #if HANDMADE_INTERNAL
                     ++debugTimeMarkerIndex;
                     if (debugTimeMarkerIndex == arrayCount(debugTimeMarkers)) { debugTimeMarkerIndex = 0; }
-#endif	
+#endif
 
                 }
 
