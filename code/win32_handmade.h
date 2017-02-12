@@ -44,4 +44,9 @@ struct win32_GameCode {
 	bool isValid;
 };
 
+struct win32_state {
+	int inputRecordingIndex;
+	int inputPlayingIndex;
+};
+
 #endif

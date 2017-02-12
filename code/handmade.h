@@ -60,6 +60,7 @@ struct GameImageBuffer {
 	int Width;
 	int Height;
 	int Pitch;
+	int bytesPerPixel;
 };
 
 struct GameSoundBuffer {
@@ -117,6 +118,9 @@ struct GameState {
 	int blueOffset;
 	int greenOffset;
 	real32 tSine;
+
+	int playerX;
+	int playerY;
 };
 
 struct GameMemory {
