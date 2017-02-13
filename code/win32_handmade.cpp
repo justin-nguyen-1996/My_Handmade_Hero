@@ -329,6 +329,42 @@ LRESULT CALLBACK Win32_WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lPa
     return res;
 }
 
+static void Win32_BeginRecordingInput(win32_state* state, int inputRecordingIndex) {
+    char* fileName = "foo.hmi";
+    state->inputRecordingIndex = inputRecordingIndex;
+    state->recordingHandle = CreateFileA(fileName, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
+}
+
+static void Win32_EndRecordingInput(win32_state* state) {
+    CloseHandle(state->recordingHandle);
+    state->inputRecordingIndex = 0;
+}
+
+static void Win32_RecordInput(win32_state* state, GameInput* newInput) {
+    DWORD bytesWritten;
+    WriteFile(state->recordingHandle, newInput, sizeof(*newInput), &bytesWritten, 0);
+}
+
+static void Win32_BeginPlayBackInput(win32_state* state, int inputPlayingIndex) {
+    char* fileName = "foo.hmi";
+    state->inputPlayingIndex = inputPlayingIndex;
+    state->playBackHandle = CreateFileA(fileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+}
+
+static void Win32_EndPlayBackInput(win32_state* state) {
+    CloseHandle(state->playBackHandle);
+    state->inputPlayingIndex = 0;
+}
+
+static void Win32_PlayBackInput(win32_state* state, GameInput* newInput) {
+    DWORD bytesRead;
+    if (ReadFile(state->playBackHandle, newInput, sizeof(*newInput), &bytesRead, 0)) {
+        int playingIndex = state->inputPlayingIndex;
+        Win32_EndPlayBackInput(state);
+        Win32_BeginPlayBackInput(state, playingIndex);
+    }
+}
+
 static void Win32_ProcessPendingMessages(win32_state* Win32State, GameControllerInput* keyboardController) {
     // Message queue --> pull out one at a time --> translate & dispatch --> parse in Window Callback procedure
     MSG Message;
@@ -355,15 +391,14 @@ static void Win32_ProcessPendingMessages(win32_state* Win32State, GameController
                                    else if (VKCode == VK_ESCAPE) { Win32_ProcessKeyboard(&keyboardController->start,           IsDown); }
                                    else if (VKCode == VK_SPACE)  { Win32_ProcessKeyboard(&keyboardController->back,            IsDown); }
 #if HANDMADE_INTERNAL
-                                   else if (VKCode == 'P')       { if (IsDown) { globalPause = !globalPause; } }
-                                   else if (VKCode == 'L')       { 
-                                                                   if (Win32State == 0) {
-                                                                       Win32State->inputRecordingIndex = 1; 
-                                                                   } else {
-                                                                       Win32State->inputRecordingIndex = 0; 
-                                                                       Win32State->inputPlayingIndex = 1; 
+                                   else if (VKCode == 'P')       { if (IsDown) { globalPause = !globalPause; } } // Pause
+                                   else if (VKCode == 'L')       { // Loop
+                                                                   if (Win32State == 0) { 
+                                                                       Win32_BeginRecordingInput(Win32State, 1); // if not recording, start recording
+                                                                   } else {                                       // if already recording, start playback
+                                                                       Win32_EndRecordingInput(Win32State);
+                                                                       Win32_BeginPlayBackInput(Win32State, 1);
                                                                    }
-                                                                     
                                                                  }
 #endif
                                }
@@ -513,14 +548,6 @@ void catString(size_t sourceACount, char* sourceA,
     for (int i = 0; i < sourceACount; ++i) { *dest++ = *sourceA++; }
     for (int i = 0; i < sourceBCount; ++i) { *dest++ = *sourceB++; }
     *dest++ = 0;
-}
-
-static void Win32_RecordInput(win32_state* state, GameInput* newInput) {
-    
-}
-
-static void Win32_PlayBackInput(win32_state* state, GameInput* newInput) {
-    
 }
 
 // WinMain
@@ -744,17 +771,14 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                         imageBuffer.Pitch = GlobalBackBuffer.Pitch;
                         imageBuffer.bytesPerPixel = GlobalBackBuffer.BytesPerPixel; 
 
-                        if (Win32State.inputRecordingIndex) {
-                            Win32_RecordInput(&Win32State, newInput);
-                        }
-
-                        if (Win32State.inputPlayingIndex) {
-                            Win32_PlayBackInput(&Win32State, newInput);
-                        }
+                        // Looped live code editing
+                        if (Win32State.inputRecordingIndex) { Win32_RecordInput(&Win32State, newInput); }
+                        if (Win32State.inputPlayingIndex)   { Win32_PlayBackInput(&Win32State, newInput); }
 
                         // Call our game platform
                         game.updateAndRender(&gameMemory, newInput, &imageBuffer);
 
+                        // Timing stuff
                         LARGE_INTEGER audioWallClock = Win32_getWallClock();
                         real32 fromBeginToAudioSeconds = Win32_getSecondsElapsed(flipWallClock, audioWallClock);
 

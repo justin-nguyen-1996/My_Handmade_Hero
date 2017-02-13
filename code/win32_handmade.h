@@ -45,7 +45,10 @@ struct win32_GameCode {
 };
 
 struct win32_state {
+	HANDLE recordingHandle;
 	int inputRecordingIndex;
+	
+	HANDLE playBackHandle;
 	int inputPlayingIndex;
 };
 
