@@ -358,7 +358,9 @@ static void Win32_EndPlayBackInput(win32_state* state) {
 
 static void Win32_PlayBackInput(win32_state* state, GameInput* newInput) {
     DWORD bytesRead;
-    if (ReadFile(state->playBackHandle, newInput, sizeof(*newInput), &bytesRead, 0)) {
+    if (ReadFile(state->playBackHandle, newInput, sizeof(*newInput), &bytesRead, 0)) { // still reading input
+        
+    } else {
         int playingIndex = state->inputPlayingIndex;
         Win32_EndPlayBackInput(state);
         Win32_BeginPlayBackInput(state, playingIndex);
@@ -393,11 +395,13 @@ static void Win32_ProcessPendingMessages(win32_state* Win32State, GameController
 #if HANDMADE_INTERNAL
                                    else if (VKCode == 'P')       { if (IsDown) { globalPause = !globalPause; } } // Pause
                                    else if (VKCode == 'L')       { // Loop
-                                                                   if (Win32State == 0) { 
-                                                                       Win32_BeginRecordingInput(Win32State, 1); // if not recording, start recording
-                                                                   } else {                                       // if already recording, start playback
-                                                                       Win32_EndRecordingInput(Win32State);
-                                                                       Win32_BeginPlayBackInput(Win32State, 1);
+                                                                   if (IsDown) {
+                                                                       if (Win32State == 0) { 
+                                                                           Win32_BeginRecordingInput(Win32State, 1); // if not recording, start recording
+                                                                       } else {                                       // if already recording, start playback
+                                                                           Win32_EndRecordingInput(Win32State);
+                                                                           Win32_BeginPlayBackInput(Win32State, 1);
+                                                                       }
                                                                    }
                                                                  }
 #endif

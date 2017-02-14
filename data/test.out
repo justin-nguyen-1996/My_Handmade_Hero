@@ -90,7 +90,7 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 		gameState->playerX += (int) (4.0f * controller->stickAverageX);
 		gameState->playerY -= (int) (4.0f * controller->stickAverageY);
 
-		if (controller->actionDown.endedDown) { gameState->playerY -= 10; }	
+		if (controller->actionDown.endedDown) { gameState->playerY -= 1; }	
 	}
 	
 	// Display the gradient
