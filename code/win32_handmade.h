@@ -44,6 +44,9 @@ struct win32_GameCode {
 	bool isValid;
 };
 
+#define WIN32_STATE_FILE_NAME_COUNT MAX_PATH
+
+// Holds our game memory, stuff for live looped code editing, exe file name
 struct win32_state {
 	uint64_t totalSize;
 	void* gameMemoryBlock;
@@ -53,6 +56,9 @@ struct win32_state {
 	
 	HANDLE playBackHandle;
 	int inputPlayingIndex;
+	
+	char exeFileName[WIN32_STATE_FILE_NAME_COUNT];
+	char* onePastLastSlash;
 };
 
 #endif

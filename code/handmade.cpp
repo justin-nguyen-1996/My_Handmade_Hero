@@ -41,7 +41,7 @@ static void GameOutputSound(GameState* gameState, GameSoundBuffer* SoundBuffer, 
 	int wavePeriod = SoundBuffer->samplesPerSecond / toneHertz;
 	int16_t* sampleOut = SoundBuffer->samples;
 
-#if 0
+#if 1
 	// Loop through the first region to write to the buffer, stereo sound is encoded as pairs of 16bit values (left, right)
 	for (int SampleIndex = 0; SampleIndex < SoundBuffer->sampleCount; ++SampleIndex) {
 		real32 sineValue = sinf(gameState->tSine);

@@ -142,11 +142,9 @@ struct GameMemory {
 
 #define GAME_UPDATE_AND_RENDER(name) void name(GameMemory* memory, GameInput* input, GameImageBuffer* imageBuffer)
 typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
-GAME_UPDATE_AND_RENDER(GameUpdateAndRenderStub) { }
 
 #define GAME_GET_SOUND_SAMPLES(name) void name(GameMemory* memory, GameSoundBuffer* soundBuffer)
 typedef GAME_GET_SOUND_SAMPLES(game_get_sound_samples);
-GAME_GET_SOUND_SAMPLES(GameGetSoundSamplesStub) { }
 
 /******************************************************************/
 /******** Services the platform provides to the game layer ********/
