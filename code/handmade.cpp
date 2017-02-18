@@ -12,8 +12,8 @@ static void renderPlayer(GameImageBuffer* buffer, int playerX, int playerY) {
 			if (pixel >= buffer->BitmapMemory  &&  pixel+4 <= endOfBuffer) {
 				*(uint32_t*)pixel = color; // fills that pixel with the specified color
 			}
+			pixel += buffer->Pitch;
 		}
-		pixel += buffer->Pitch;
 	}
 }
 
