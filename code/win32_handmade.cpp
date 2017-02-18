@@ -309,7 +309,10 @@ LRESULT CALLBACK Win32_WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lPa
         case WM_SIZE:          break;
         case WM_CLOSE:         Running = false; break;
         case WM_DESTROY:       Running = false; break;
-        case WM_ACTIVATEAPP:   break;
+                               
+        case WM_ACTIVATEAPP:   { if (wParam == TRUE) { SetLayeredWindowAttributes(hwnd, RGB(0,0,0), 255, LWA_ALPHA); }
+                                 else                { SetLayeredWindowAttributes(hwnd, RGB(0,0,0), 64, LWA_ALPHA); }
+                               } break;
 
         case WM_SYSKEYDOWN:
         case WM_SYSKEYUP:
@@ -333,6 +336,10 @@ static void Win32_BeginRecordingInput(win32_state* state, int inputRecordingInde
     char* fileName = "foo.hmi";
     state->inputRecordingIndex = inputRecordingIndex;
     state->recordingHandle = CreateFileA(fileName, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
+    DWORD bytesToWrite = (DWORD) state->totalSize;
+    assert(state->totalSize == bytesToWrite);
+    DWORD bytesWritten;
+    WriteFile(state->recordingHandle, state->gameMemoryBlock, bytesToWrite, &bytesWritten, 0);
 }
 
 static void Win32_EndRecordingInput(win32_state* state) {
@@ -349,6 +356,10 @@ static void Win32_BeginPlayBackInput(win32_state* state, int inputPlayingIndex) 
     char* fileName = "foo.hmi";
     state->inputPlayingIndex = inputPlayingIndex;
     state->playBackHandle = CreateFileA(fileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+    DWORD bytesToRead = (DWORD) state->totalSize;
+    assert(state->totalSize == bytesToRead);
+    DWORD bytesRead;
+    ReadFile(state->playBackHandle, state->gameMemoryBlock, bytesToRead, &bytesRead, 0);
 }
 
 static void Win32_EndPlayBackInput(win32_state* state) {
@@ -357,13 +368,14 @@ static void Win32_EndPlayBackInput(win32_state* state) {
 }
 
 static void Win32_PlayBackInput(win32_state* state, GameInput* newInput) {
-    DWORD bytesRead;
-    if (ReadFile(state->playBackHandle, newInput, sizeof(*newInput), &bytesRead, 0)) { // still reading input
-        
-    } else {
-        int playingIndex = state->inputPlayingIndex;
-        Win32_EndPlayBackInput(state);
-        Win32_BeginPlayBackInput(state, playingIndex);
+    DWORD bytesRead = 0;
+    if (ReadFile(state->playBackHandle, newInput, sizeof(*newInput), &bytesRead, 0)) {
+        if (bytesRead == 0) { 
+            int playingIndex = state->inputPlayingIndex;
+            Win32_EndPlayBackInput(state);
+            Win32_BeginPlayBackInput(state, playingIndex);
+            ReadFile(state->playBackHandle, newInput, sizeof(*newInput), &bytesRead, 0);
+        }
     }
 }
 
@@ -396,7 +408,7 @@ static void Win32_ProcessPendingMessages(win32_state* Win32State, GameController
                                    else if (VKCode == 'P')       { if (IsDown) { globalPause = !globalPause; } } // Pause
                                    else if (VKCode == 'L')       { // Loop
                                                                    if (IsDown) {
-                                                                       if (Win32State == 0) { 
+                                                                       if (Win32State->inputRecordingIndex == 0) { 
                                                                            Win32_BeginRecordingInput(Win32State, 1); // if not recording, start recording
                                                                        } else {                                       // if already recording, start playback
                                                                            Win32_EndRecordingInput(Win32State);
@@ -596,7 +608,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 
     // Set up WindowClass
     WNDCLASSA WindowClass = {};
-    WindowClass.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
+    WindowClass.style = CS_VREDRAW | CS_HREDRAW;
     WindowClass.lpfnWndProc = Win32_WindowProc;
     WindowClass.hInstance = hInstance;
     // 	WindowClass.hIcon = ;
@@ -612,12 +624,11 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 
     // Register the window and create the window
     if (RegisterClassA(&WindowClass)) {
-        HWND WindowHandle = CreateWindowExA( 0, WindowClass.lpszClassName, "Handmade Hero", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
-                CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, hInstance, 0);
+        HWND WindowHandle = CreateWindowExA(WS_EX_TOPMOST | WS_EX_LAYERED, WindowClass.lpszClassName, "Handmade Hero", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+                                            CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, hInstance, 0);
         if (WindowHandle) {
 
             Running = true;
-            HDC DeviceContext = GetDC(WindowHandle);
             win32_state Win32State = {};
 
             // sound vars
@@ -642,14 +653,16 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 #endif
 
             // Initialize our game memory
+            
             GameMemory gameMemory = {};
             gameMemory.permanentStorageSize = Megabytes(64);
             gameMemory.transientStorageSize = Gigabytes(1);
             gameMemory.DEBUG_Platform_FreeFileMemory = DEBUG_Platform_FreeFileMemory;
             gameMemory.DEBUG_Platform_ReadEntireFile = DEBUG_Platform_ReadEntireFile;
             gameMemory.DEBUG_Platform_WriteEntireFile = DEBUG_Platform_WriteEntireFile;
-            uint64_t totalSize = gameMemory.permanentStorageSize + gameMemory.transientStorageSize;
-            gameMemory.permanentStorage = VirtualAlloc(baseAddress, totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+            Win32State.totalSize = gameMemory.permanentStorageSize + gameMemory.transientStorageSize;
+            Win32State.gameMemoryBlock = VirtualAlloc(baseAddress, (size_t)Win32State.totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+            gameMemory.permanentStorage = Win32State.gameMemoryBlock;
             gameMemory.transientStorage = ((uint8_t*) (gameMemory.permanentStorage)) + gameMemory.permanentStorageSize; // cast in order to increment by bytes
 
             if (samples  &&  gameMemory.permanentStorage  &&  gameMemory.transientStorage) {
@@ -905,7 +918,9 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                                 debugTimeMarkerIndex - 1, &soundInfo, targetSecondsPerFrame);
 #endif
 
+                        HDC DeviceContext = GetDC(WindowHandle);
                         Win32_DisplayBuffer(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
+                        ReleaseDC(WindowHandle, DeviceContext);
 
 #if HANDMADE_INTERNAL
                         if (SecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor) == DS_OK) {

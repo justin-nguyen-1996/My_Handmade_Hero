@@ -2,17 +2,18 @@
 #include "handmade.h"
 
 static void renderPlayer(GameImageBuffer* buffer, int playerX, int playerY) {
+	uint8_t* endOfBuffer = (uint8_t*)buffer->BitmapMemory + (buffer->Height * buffer->Pitch);
 	uint32_t color = 0xFFFFFFFF;
 	int top = playerY;
 	int bottom = playerY + 10;
-	if (top <= 0) { top = 0; }
-	if (bottom > buffer->Height) { bottom = buffer->Height; }
 	for (int x = playerX; x < playerX + 10; ++x) {
 		uint8_t* pixel = (uint8_t*) buffer->BitmapMemory + x * buffer->bytesPerPixel + top * buffer->Pitch; // gets top left corner of player
 		for (int y = top; y < bottom; ++y) {
-			*(uint32_t*)pixel = color; // fills that pixel with the specified color
-			pixel += buffer->Pitch;
+			if (pixel >= buffer->BitmapMemory  &&  pixel+4 <= endOfBuffer) {
+				*(uint32_t*)pixel = color; // fills that pixel with the specified color
+			}
 		}
+		pixel += buffer->Pitch;
 	}
 }
 
