@@ -44,13 +44,17 @@ typedef double real64;
 		void* contents;
 	};
 
-	#define DEBUG_PLATFORM_FREE_FILE_MEMORY(name) void name(void* memory)
+	struct ThreadContext {
+		int placeHolder;
+	};
+
+	#define DEBUG_PLATFORM_FREE_FILE_MEMORY(name) void name(ThreadContext* threadContext, void* memory)
 	typedef DEBUG_PLATFORM_FREE_FILE_MEMORY(debug_platform_free_file_memory);
 
-	#define DEBUG_PLATFORM_READ_ENTIRE_FILE(name) DebugReadFile name(char* fileName)
+	#define DEBUG_PLATFORM_READ_ENTIRE_FILE(name) DebugReadFile name(ThreadContext* threadContext, char* fileName)
 	typedef DEBUG_PLATFORM_READ_ENTIRE_FILE(debug_platform_read_entire_file);
 	
-	#define DEBUG_PLATFORM_WRITE_ENTIRE_FILE(name) bool name(char* fileName, uint32_t memorySize, void* memory)
+	#define DEBUG_PLATFORM_WRITE_ENTIRE_FILE(name) bool name(ThreadContext* threadContext, char* fileName, uint32_t memorySize, void* memory)
 	typedef DEBUG_PLATFORM_WRITE_ENTIRE_FILE(debug_platform_write_entire_file);
 	
 #endif
@@ -104,6 +108,10 @@ struct GameControllerInput {
 };
 
 struct GameInput {
+	GameButtonState mouseButtons[5];
+	int32_t mouseX; 
+	int32_t mouseY; 
+	int32_t mouseZ;
 	GameControllerInput controllers[5];
 };
 
@@ -140,10 +148,10 @@ struct GameMemory {
 /******** Services the game provides to the platform layer ********/
 /******************************************************************/
 
-#define GAME_UPDATE_AND_RENDER(name) void name(GameMemory* memory, GameInput* input, GameImageBuffer* imageBuffer)
+#define GAME_UPDATE_AND_RENDER(name) void name(ThreadContext* threadContext, GameMemory* memory, GameInput* input, GameImageBuffer* imageBuffer)
 typedef GAME_UPDATE_AND_RENDER(game_update_and_render);
 
-#define GAME_GET_SOUND_SAMPLES(name) void name(GameMemory* memory, GameSoundBuffer* soundBuffer)
+#define GAME_GET_SOUND_SAMPLES(name) void name(ThreadContext* threadContext, GameMemory* memory, GameSoundBuffer* soundBuffer)
 typedef GAME_GET_SOUND_SAMPLES(game_get_sound_samples);
 
 /******************************************************************/

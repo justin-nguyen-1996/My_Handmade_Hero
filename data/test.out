@@ -62,10 +62,10 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	if (! memory->isInit) {
 		
 		char* fileName = __FILE__; // TODO: temp
-		DebugReadFile file = memory->DEBUG_Platform_ReadEntireFile(fileName);
+		DebugReadFile file = memory->DEBUG_Platform_ReadEntireFile(threadContext, fileName);
 		if (file.contents) { 
-			memory->DEBUG_Platform_WriteEntireFile("../data/test.out", file.contentSize, file.contents);
-			memory->DEBUG_Platform_FreeFileMemory(file.contents); 
+			memory->DEBUG_Platform_WriteEntireFile(threadContext, "../data/test.out", file.contentSize, file.contents);
+			memory->DEBUG_Platform_FreeFileMemory(threadContext, file.contents); 
 		}
 		
 		gameState->toneHertz = 256;
@@ -99,6 +99,12 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 
 	// Display the player
 	renderPlayer(imageBuffer, gameState->playerX, gameState->playerY);
+	renderPlayer(imageBuffer, input->mouseX, input->mouseY);
+	for (int buttonIndex = 0; buttonIndex < arrayCount(input->mouseButtons); buttonIndex++) {
+		if (input->mouseButtons[buttonIndex].endedDown) {
+			renderPlayer(imageBuffer, 10 + 20*buttonIndex, 10);
+		}
+	}
 }
 
 extern "C" GAME_GET_SOUND_SAMPLES(gameGetSoundSamples) {

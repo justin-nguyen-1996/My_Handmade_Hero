@@ -90,9 +90,10 @@ static void Win32_ProcessButton(DWORD XInputButtonState, GameButtonState* oldSta
 
 // Process keyboard input
 static void Win32_ProcessKeyboard(GameButtonState* newState, bool isDown) {
-    assert(newState->endedDown != isDown); // this method is only supposed to be called if the keyboard state changed
-    newState->endedDown = isDown;
-    newState->halfTransitionCount += 1;
+    if (newState->endedDown != isDown) { // this method is only supposed to be called if the keyboard state changed
+        newState->endedDown = isDown;
+        newState->halfTransitionCount += 1;
+    }
 }
 
 static real32 Win32_ProcessXInputStickPos(SHORT val, SHORT deadZoneThreshold) {
@@ -238,7 +239,7 @@ DEBUG_PLATFORM_READ_ENTIRE_FILE(DEBUG_Platform_ReadEntireFile) {
                 if (ReadFile(fileHandle, result.contents, fileSize32, &bytesRead, 0)   &&   fileSize32 == bytesRead) {
                     result.contentSize = fileSize32;
                 } else {
-                    DEBUG_Platform_FreeFileMemory(result.contents);
+                    DEBUG_Platform_FreeFileMemory(threadContext, result.contents);
                     result.contents = 0;
                 }
             }
@@ -629,25 +630,28 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     // Set the size of our buffer
     Win32_ResizeDibSection(&GlobalBackBuffer, 1280, 720);
 
-    // Set the monitor refresh rate TODO: shouldn't have to manually hardcode this
-#define monitorRefreshHz       60
-#define gameUpdateHz           (monitorRefreshHz / 2)
-    real32 targetSecondsPerFrame = 1.0f / (real32) gameUpdateHz;
-
     // Register the window and create the window
     if (RegisterClassA(&WindowClass)) {
         HWND WindowHandle = CreateWindowExA(WS_EX_TOPMOST | WS_EX_LAYERED, WindowClass.lpszClassName, "Handmade Hero", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
                                             CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, hInstance, 0);
         if (WindowHandle) {
+            
+            // Use a windows call to grab the monitor refresh rate
+            HDC refreshDC = GetDC(WindowHandle);
+            int win32RefreshHz = GetDeviceCaps(refreshDC, VREFRESH);
+            ReleaseDC(WindowHandle, refreshDC);
+            
+            // Get game and monitor update rates
+            int monitorRefreshHz = 60;
+            if (win32RefreshHz > 1) { monitorRefreshHz = win32RefreshHz; }
+            real32 gameUpdateHz = (monitorRefreshHz / 2.0f);
+            real32 targetSecondsPerFrame = 1.0f / (real32) gameUpdateHz;
 
-            Running = true;
-
-            // sound vars
+            // Sound vars
             win32_SoundInfo soundInfo = {};
             soundInfo.samplesPerSecond = 48000;
             soundInfo.bytesPerSample = sizeof(int16_t) * 2;
-            soundInfo.safetyBytes = (soundInfo.samplesPerSecond * soundInfo.bytesPerSample / gameUpdateHz) / 3; // bytes per frame
-            soundInfo.latencySampleCount = 3 * (soundInfo.samplesPerSecond / gameUpdateHz); // samples per frame
+            soundInfo.safetyBytes = (int)(((real32)soundInfo.samplesPerSecond * (real32)soundInfo.bytesPerSample / gameUpdateHz) / 3.0f); // bytes per frame
             soundInfo.secondaryBufferSize = soundInfo.samplesPerSecond * soundInfo.bytesPerSample;
 
             // Initialize direct sound
@@ -690,7 +694,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 
                 // TODO: temp vars
                 int debugTimeMarkerIndex = 0;
-                win32_DebugTimeMarker debugTimeMarkers[gameUpdateHz / 2] = {};
+                win32_DebugTimeMarker debugTimeMarkers[30] = {};
 
                 uint64_t beginCycleCount = __rdtsc();
 
@@ -702,6 +706,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                 win32_GameCode game = Win32_loadGameCode(sourceGameCodeDLLFullPath, tempGameCodeDLLFullPath);
                 uint32_t loadCounter = 0;
 
+                Running = true;
                 while (Running) {
 
                     // Instantaneous live code editing by checking if the file changed
@@ -730,6 +735,19 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 
                     if (! globalPause) {
 
+                        // Processing mouse input
+                        POINT mouseLocation;
+                        GetCursorPos(&mouseLocation);
+                        ScreenToClient(WindowHandle, &mouseLocation);
+                        newInput->mouseX = mouseLocation.x;
+                        newInput->mouseY = mouseLocation.y;
+                        newInput->mouseZ = 0;
+                        Win32_ProcessKeyboard(&newInput->mouseButtons[0], GetKeyState(VK_LBUTTON)  & 1<<15);
+                        Win32_ProcessKeyboard(&newInput->mouseButtons[1], GetKeyState(VK_MBUTTON)  & 1<<15);
+                        Win32_ProcessKeyboard(&newInput->mouseButtons[2], GetKeyState(VK_RBUTTON)  & 1<<15);
+                        Win32_ProcessKeyboard(&newInput->mouseButtons[3], GetKeyState(VK_XBUTTON1) & 1<<15);
+                        Win32_ProcessKeyboard(&newInput->mouseButtons[4], GetKeyState(VK_XBUTTON2) & 1<<15);
+                        
                         /* Gamepad Input */
                         // In case they add more than four controllers some day (five controllers including keyboard)
                         DWORD maxControllerCount = XUSER_MAX_COUNT;
@@ -791,7 +809,10 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                             }
                         }
 
-                        // TODO: some temp stuff for displaying our gradient
+                        // Dummy var for thread context (needing when calling operations from Operating System)
+                        ThreadContext threadContext = {};
+
+                        // Some temp stuff for displaying our gradient
                         GameImageBuffer imageBuffer = {};
                         imageBuffer.BitmapMemory = GlobalBackBuffer.BitmapMemory;
                         imageBuffer.Width = GlobalBackBuffer.Width;
@@ -805,7 +826,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 
                         // Call our game platform
                         if (game.updateAndRender) {
-                            game.updateAndRender(&gameMemory, newInput, &imageBuffer);
+                            game.updateAndRender(&threadContext, &gameMemory, newInput, &imageBuffer);
                         }
 
                         // Timing stuff
@@ -844,7 +865,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                             DWORD byteToLock = (soundInfo.runningSampleIndex * soundInfo.bytesPerSample) % soundInfo.secondaryBufferSize;
 
                             // Some needed calculations and expected results
-                            DWORD expectedSoundBytesPerFrame = soundInfo.samplesPerSecond * soundInfo.bytesPerSample / gameUpdateHz;
+                            DWORD expectedSoundBytesPerFrame = (int)((real32)(soundInfo.samplesPerSecond * soundInfo.bytesPerSample) / gameUpdateHz);
                             real32 secondsLeftUntilFlip = targetSecondsPerFrame - fromBeginToAudioSeconds;
                             DWORD expectedBytesUntilFlip = (DWORD) ((secondsLeftUntilFlip / targetSecondsPerFrame) * (real32)expectedSoundBytesPerFrame);
                             DWORD expectedFrameBoundaryByte = playCursor + expectedBytesUntilFlip;
@@ -872,7 +893,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                             soundBuffer.sampleCount = bytesToWrite / soundInfo.bytesPerSample;
                             soundBuffer.samples = samples;
                             if (game.getSoundSamples) {
-                                game.getSoundSamples(&gameMemory, &soundBuffer);
+                                // TODO: removed sound bc it was really annoying, uncomment this to put it back
+//                                 game.getSoundSamples(&threadContext, &gameMemory, &soundBuffer);
                             }
 
 #if HANDMADE_INTERNAL
@@ -916,7 +938,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                             }
 
                             real32 testSecondsElapsedForFrame = Win32_getSecondsElapsed(beginCounter, Win32_getWallClock());
-                            // 						if(testSecondsElapsedForFrame < targetSecondsPerFrame);
 
                             while (secondsElapsedForFrame < targetSecondsPerFrame) {
                                 secondsElapsedForFrame = Win32_getSecondsElapsed(beginCounter, Win32_getWallClock());
@@ -962,7 +983,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                         real64 FPS = 0.0f;
                         real64 MCPF = ((real64)cyclesElapsed / (1000.0f * 1000.0f));
                         char FPSBuffer[256];
-                        //                     _snprintf_s(FPSBuffer, sizeof(FPSBuffer), "%.02fms/f,  %.02ff/s,  %.02fmc/f\n", msPerFrame, FPS, MCPF);
                         OutputDebugStringA(FPSBuffer);
 
 #if HANDMADE_INTERNAL
