@@ -45,14 +45,22 @@ struct win32_GameCode {
 
 #define WIN32_STATE_FILE_NAME_COUNT MAX_PATH
 
+struct win32_ReplayBuffer {
+	HANDLE fileHandle;
+	HANDLE memoryMap;
+	char fileName[WIN32_STATE_FILE_NAME_COUNT];
+	void* memoryBlock;
+};
+
 // Holds our game memory, stuff for live looped code editing, exe file name
 struct win32_state {
+	win32_ReplayBuffer replayBuffers[4];
+	
 	uint64_t totalSize;
 	void* gameMemoryBlock;
 	
 	HANDLE recordingHandle;
 	int inputRecordingIndex;
-	
 	HANDLE playBackHandle;
 	int inputPlayingIndex;
 	
