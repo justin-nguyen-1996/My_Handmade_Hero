@@ -856,9 +856,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                         if (Win32State.inputPlayingIndex)   { Win32_PlayBackInput(&Win32State, newInput); }
 
                         // Call our game platform
-                        if (game.updateAndRender) {
-                            game.updateAndRender(&threadContext, &gameMemory, newInput, &imageBuffer);
-                        }
+                        if (game.updateAndRender) { game.updateAndRender(&threadContext, &gameMemory, newInput, &imageBuffer); }
 
                         // Timing stuff
                         LARGE_INTEGER audioWallClock = Win32_getWallClock();
