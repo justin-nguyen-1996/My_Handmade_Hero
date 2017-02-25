@@ -643,7 +643,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
     WindowClass.lpszClassName = "Handmade Hero Window Class";
 
     // Set the size of our buffer
-    Win32_ResizeDibSection(&GlobalBackBuffer, 1280, 720);
+    Win32_ResizeDibSection(&GlobalBackBuffer, 1920/2, 1080/2);
 
     // Register the window and create the window
     if (RegisterClassA(&WindowClass)) {

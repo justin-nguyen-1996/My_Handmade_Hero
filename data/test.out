@@ -41,17 +41,19 @@ static void GameOutputSound(GameState* gameState, GameSoundBuffer* SoundBuffer, 
 	int wavePeriod = SoundBuffer->samplesPerSecond / toneHertz;
 	int16_t* sampleOut = SoundBuffer->samples;
 
-#if 1
 	// Loop through the first region to write to the buffer, stereo sound is encoded as pairs of 16bit values (left, right)
 	for (int SampleIndex = 0; SampleIndex < SoundBuffer->sampleCount; ++SampleIndex) {
+#if 0
 		real32 sineValue = sinf(gameState->tSine);
 		int16_t sampleValue = (int16_t) (sineValue * toneVolume);
+#else   
+		int16_t sampleValue = 0;
+#endif
 		*sampleOut++ = sampleValue;
 		*sampleOut++ = sampleValue;
 		gameState->tSine += 2.0f * PI * 1.0f / (real32) wavePeriod;
 		if(gameState->tSine > 2.0f*PI) { gameState->tSine -= 2.0f*PI; }
 	}
-#endif
 }
 
 extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
@@ -95,7 +97,7 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	}
 	
 	// Display the gradient
-	RenderWeirdGradient(imageBuffer, gameState->blueOffset, gameState->greenOffset);
+// 	RenderWeirdGradient(imageBuffer, gameState->blueOffset, gameState->greenOffset);
 
 	// Display the player
 	renderPlayer(imageBuffer, gameState->playerX, gameState->playerY);

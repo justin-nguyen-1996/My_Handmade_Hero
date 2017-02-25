@@ -124,13 +124,7 @@ inline GameControllerInput* getController(GameInput* input, int controllerIndex)
 }
 
 struct GameState {
-	int toneHertz;
-	int blueOffset;
-	int greenOffset;
-	real32 tSine;
-
-	int playerX;
-	int playerY;
+	
 };
 
 struct GameMemory {
