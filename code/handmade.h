@@ -113,6 +113,8 @@ struct GameInput {
 	int32_t mouseY; 
 	int32_t mouseZ;
 	GameControllerInput controllers[5];
+
+	real32 secondsToAdvanceOverUpdate;
 };
 
 inline GameControllerInput* getController(GameInput* input, int controllerIndex) {

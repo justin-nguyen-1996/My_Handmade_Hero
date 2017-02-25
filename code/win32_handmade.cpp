@@ -717,6 +717,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                 GameInput input[2] = {};
                 GameInput* newInput = &input[0];
                 GameInput* oldInput = &input[1];
+                newInput->secondsToAdvanceOverUpdate = targetSecondsPerFrame;
 
                 // some timing stuff
                 LARGE_INTEGER beginCounter = Win32_getWallClock();

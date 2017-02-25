@@ -1,6 +1,6 @@
  handmade
 
- Timestamp is 58aa77b4 (Sun Feb 19 22:59:32 2017)
+ Timestamp is 58b0f968 (Fri Feb 24 21:26:32 2017)
 
  Preferred load address is 0000000180000000
 
@@ -2512,8 +2512,8 @@
  0001:00030880       __DestructExceptionObject$filt$0 0000000180031880 f   libvcruntimed:frame.obj
  0001:000308b0       __FrameUnwindToState$filt$0 00000001800318b0 f   libvcruntimed:frame.obj
  0001:000308d1       __FrameUnwindToState$fin$1 00000001800318d1 f   libvcruntimed:frame.obj
- 0002:000002e0       $SG4040                    00000001800322e0     handmade.obj
- 0002:00000310       $SG4042                    0000000180032310     handmade.obj
+ 0002:000002e0       $SG4041                    00000001800322e0     handmade.obj
+ 0002:00000310       $SG4043                    0000000180032310     handmade.obj
  0002:00000338       GS_ExceptionPointers       0000000180032338     LIBCMTD:gs_report.obj
  0002:00000378       ?module_names@?A0x61ce2399@@3QBQEB_WB 0000000180032378     libvcruntimed:winapi_downlevel.obj
  0002:000005e0       ?candidate_modules@?1??try_get_EventRegister@@YAP6AKPEBU_GUID@@P6AX0KE_K1PEAU_EVENT_FILTER_DESCRIPTOR@@PEAX@Z3PEA_K@ZXZ@4QBW4module_id@?A0x61ce2399@@B 00000001800325e0     libvcruntimed:winapi_downlevel.obj
