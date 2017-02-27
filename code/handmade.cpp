@@ -1,6 +1,11 @@
 
 #include "handmade.h"
 
+static int32_t roundReal32ToUInt32(real32 val) {
+	uint32_t res = (uint32_t) (val + 0.5f);
+	return res;
+}
+
 static int32_t roundReal32ToInt32(real32 val) {
 	int32_t res = (int32_t) (val + 0.5f);
 	return res;
@@ -9,8 +14,13 @@ static int32_t roundReal32ToInt32(real32 val) {
 static void drawRectangle(GameImageBuffer* buffer, 
 						  real32 realMinX, real32 realMinY, 
 						  real32 realMaxX, real32 realMaxY,
-						  uint32_t color) 
+						  real32 R, real32 G, real32 B) 
 {
+	// Color calculation
+	uint32_t color = (roundReal32ToUInt32(R * 255.0f) << 16) 
+					 | (roundReal32ToUInt32(G * 255.0f) << 8) 
+					 | (roundReal32ToUInt32(B * 255.0f) << 0);
+	
 	// Round input params 
 	int32_t minX = roundReal32ToInt32(realMinX);
 	int32_t minY = roundReal32ToInt32(realMinY);
@@ -95,9 +105,24 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 			
 		}
 	}
+
+	// Tile map
+	uint32_t tileMap[9][16] = 
+	{
+	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0 },
+	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0 },
+	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0 },
+	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0 },
+	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0 },
+	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0 },
+	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0 },
+	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0 },
+	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0 },
+	}
 	
-	drawRectangle(imageBuffer, 0, 0, (real32)imageBuffer->Width, (real32)imageBuffer->Height, 0x00FF00FF);
-	drawRectangle(imageBuffer, 10.0f, 10.0f, 40.0f, 40.0f, 0x0000FFFF);
+	// Draw some temp rectangles
+	drawRectangle(imageBuffer, 0, 0, (real32)imageBuffer->Width, (real32)imageBuffer->Height, 0.5f, 1.0f, 0.5f);
+	drawRectangle(imageBuffer, 10.0f, 10.0f, 40.0f, 40.0f, 1.0, 0.0, 0.0);
 }
 
 extern "C" GAME_GET_SOUND_SAMPLES(gameGetSoundSamples) {
