@@ -31,7 +31,7 @@ static void drawRectangle(GameImageBuffer* buffer,
 	if (minX < 0) 			   { minX = 0; }
 	if (minY < 0) 			   { minY = 0; }
 	if (maxX > buffer->Width)  { maxX = buffer->Width; }
-	if (maxY > buffer->Height) { maxY = buffer->Width; }
+	if (maxY > buffer->Height) { maxY = buffer->Height; }
 	
 	// Gets top left corner of player
 	uint8_t* row = (uint8_t*)buffer->BitmapMemory + minX*buffer->bytesPerPixel + minY*buffer->Pitch; 
@@ -109,20 +109,36 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	// Tile map
 	uint32_t tileMap[9][16] = 
 	{
-	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0 },
-	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0 },
-	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0 },
-	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0 },
-	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0 },
-	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0 },
-	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0 },
-	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0 },
-	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0,     0, 0, 0, 0 },
-	}
+	     { 1, 0, 0, 0,     0, 0, 0, 0,     0, 1, 0, 0,     1, 0, 0, 1 },
+	     { 1, 0, 1, 0,     0, 0, 0, 0,     0, 1, 0, 0,     0, 0, 0, 0 },
+	     { 1, 0, 0, 1,     1, 1, 1, 1,     0, 1, 0, 0,     0, 0, 1, 0 },
+	     { 1, 1, 0, 0,     0, 0, 0, 0,     0, 1, 0, 0,     0, 0, 0, 1 },
+	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 1, 0, 0,     0, 0, 0, 0 },
+	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 1, 0, 0,     0, 1, 1, 0 },
+	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 1, 0, 0,     0, 0, 0, 0 },
+	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 1, 0, 0,     0, 0, 0, 0 },
+	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 1, 0, 1,     0, 1, 0, 0 },
+	};
+
+	// Some tile map vars
+	real32 upperLeftX = 10; real32 upperLeftY = 10;
+	real32 tileWidth = 50; real32 tileHeight = 50;
+
+    drawRectangle(imageBuffer, 0.0f, 0.0f, (real32)imageBuffer->Width, (real32)imageBuffer->Height, 1.0f, 0.0f, 0.0f);
 	
-	// Draw some temp rectangles
-	drawRectangle(imageBuffer, 0, 0, (real32)imageBuffer->Width, (real32)imageBuffer->Height, 0.5f, 1.0f, 0.5f);
-	drawRectangle(imageBuffer, 10.0f, 10.0f, 40.0f, 40.0f, 1.0, 0.0, 0.0);
+	// Display the tile map
+	for (int row = 0; row < 9; ++row) {
+		for (int col = 0; col < 16; ++col) {
+			int tileIndex = tileMap[row][col];
+			real32 minX = upperLeftX + (tileWidth * (real32)col);
+			real32 minY = upperLeftY + (tileHeight * (real32)row);
+			real32 maxX = minX + tileWidth;
+			real32 maxY = minY + tileHeight;
+			real32 tempColor = 0.5f;
+			if (tileIndex == 1) { tempColor = 1.0f; }
+			drawRectangle(imageBuffer, minX, minY, maxX, maxY, tempColor, tempColor, tempColor);
+		}
+	}
 }
 
 extern "C" GAME_GET_SOUND_SAMPLES(gameGetSoundSamples) {
