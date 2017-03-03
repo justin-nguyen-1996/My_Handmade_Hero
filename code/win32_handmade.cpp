@@ -647,7 +647,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 
     // Register the window and create the window
     if (RegisterClassA(&WindowClass)) {
-        HWND WindowHandle = CreateWindowExA(WS_EX_TOPMOST | WS_EX_LAYERED, WindowClass.lpszClassName, "Handmade Hero", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+        HWND WindowHandle = CreateWindowExA(0, WindowClass.lpszClassName, "Handmade Hero", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
                                             CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, hInstance, 0);
         if (WindowHandle) {
             
@@ -717,7 +717,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                 GameInput input[2] = {};
                 GameInput* newInput = &input[0];
                 GameInput* oldInput = &input[1];
-                newInput->secondsToAdvanceOverUpdate = targetSecondsPerFrame;
+                newInput->deltaTimeForFrame = targetSecondsPerFrame;
 
                 // some timing stuff
                 LARGE_INTEGER beginCounter = Win32_getWallClock();

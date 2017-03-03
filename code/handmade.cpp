@@ -88,6 +88,7 @@ static void GameOutputSound(GameState* gameState, GameSoundBuffer* SoundBuffer, 
 	}
 }
 
+// static void gameUpdateAndRender(ThreadContext* threadContext, GameMemory* memory, GameInput* input, GameImageBuffer* imageBuffer)
 extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	
 	GameState* gameState = (GameState*) memory->permanentStorage;
@@ -102,33 +103,42 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 		if (controller->isAnalog) { // controller input
 			
 		} else { // keyboard input
-			
+			real32 deltaPlayerX = 0.0f;
+			real32 deltaPlayerY = 0.0f;
+			if (controller->moveUp.endedDown) { deltaPlayerY = -1.0f; }
+			if (controller->moveDown.endedDown) { deltaPlayerY = 1.0f; }
+			if (controller->moveRight.endedDown) { deltaPlayerX = 1.0f; }
+			if (controller->moveLeft.endedDown) { deltaPlayerX = -1.0f; }
+			deltaPlayerX *= 120.0f;
+			deltaPlayerY *= 120.0f;
+			gameState->playerX += input->deltaTimeForFrame * deltaPlayerX;
+			gameState->playerY += input->deltaTimeForFrame * deltaPlayerY;
 		}
 	}
 
 	// Tile map
-	uint32_t tileMap[9][16] = 
+	uint32_t tileMap[9][17] = 
 	{
-	     { 1, 0, 0, 0,     0, 0, 0, 0,     0, 1, 0, 0,     1, 0, 0, 1 },
-	     { 1, 0, 1, 0,     0, 0, 0, 0,     0, 1, 0, 0,     0, 0, 0, 0 },
-	     { 1, 0, 0, 1,     1, 1, 1, 1,     0, 1, 0, 0,     0, 0, 1, 0 },
-	     { 1, 1, 0, 0,     0, 0, 0, 0,     0, 1, 0, 0,     0, 0, 0, 1 },
-	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 1, 0, 0,     0, 0, 0, 0 },
-	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 1, 0, 0,     0, 1, 1, 0 },
-	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 1, 0, 0,     0, 0, 0, 0 },
-	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 1, 0, 0,     0, 0, 0, 0 },
-	     { 0, 0, 0, 0,     0, 0, 0, 0,     0, 1, 0, 1,     0, 1, 0, 0 },
+	     { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     1, 0, 0, 1 },
+	     { 1, 0, 1, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 0 },
+	     { 1, 0, 0, 1,     1, 1, 1, 1,     0,     0, 1, 0, 0,     0, 0, 1, 0 },
+	     { 1, 1, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
+	     { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 0 },
+	     { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 1, 1, 0 },
+	     { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 0 },
+	     { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 0 },
+	     { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 1,     0, 1, 0, 0 },
 	};
 
 	// Some tile map vars
-	real32 upperLeftX = 10; real32 upperLeftY = 10;
+	real32 upperLeftX = -30; real32 upperLeftY = 0;
 	real32 tileWidth = 50; real32 tileHeight = 50;
 
     drawRectangle(imageBuffer, 0.0f, 0.0f, (real32)imageBuffer->Width, (real32)imageBuffer->Height, 1.0f, 0.0f, 0.0f);
 	
 	// Display the tile map
 	for (int row = 0; row < 9; ++row) {
-		for (int col = 0; col < 16; ++col) {
+		for (int col = 0; col < 17; ++col) {
 			int tileIndex = tileMap[row][col];
 			real32 minX = upperLeftX + (tileWidth * (real32)col);
 			real32 minY = upperLeftY + (tileHeight * (real32)row);
@@ -139,6 +149,16 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 			drawRectangle(imageBuffer, minX, minY, maxX, maxY, tempColor, tempColor, tempColor);
 		}
 	}
+
+	// Draw the player
+	real32 playerWidth = 0.75f * tileWidth;
+	real32 playerHeight = tileHeight;
+	real32 playerLeft = gameState->playerX - (playerWidth * 0.5f);
+	real32 playerTop = gameState->playerY - playerHeight;
+	real32 playerR = 1.0;
+	real32 playerG = 1.0;
+	real32 playerB = 0.0;
+	drawRectangle(imageBuffer, playerLeft, playerTop, playerLeft + playerWidth, playerTop + playerHeight, playerR, playerG, playerB); 
 }
 
 extern "C" GAME_GET_SOUND_SAMPLES(gameGetSoundSamples) {

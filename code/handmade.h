@@ -114,17 +114,12 @@ struct GameInput {
 	int32_t mouseZ;
 	GameControllerInput controllers[5];
 
-	real32 secondsToAdvanceOverUpdate;
+	real32 deltaTimeForFrame;
 };
 
-inline GameControllerInput* getController(GameInput* input, int controllerIndex) {
-	assert(controllerIndex < arrayCount(input->controllers));
-	GameControllerInput* res = &input->controllers[controllerIndex];
-	return res;
-}
-
 struct GameState {
-	
+	real32 playerX;
+	real32 playerY;
 };
 
 struct GameMemory {
@@ -158,6 +153,12 @@ typedef GAME_GET_SOUND_SAMPLES(game_get_sound_samples);
 inline uint32_t safeTruncateUInt64(uint64_t value) {
 	assert(value <= 0xFFFFFFFF);
 	uint32_t res = (uint32_t) value;
+	return res;
+}
+
+inline GameControllerInput* getController(GameInput* input, int controllerIndex) {
+	assert(controllerIndex < arrayCount(input->controllers));
+	GameControllerInput* res = &input->controllers[controllerIndex];
 	return res;
 }
 
