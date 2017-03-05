@@ -299,8 +299,16 @@ static void Win32_ResizeDibSection(win32_Buffer* buffer, int Width, int Height)
 // Have Windows display our buffer and scale it as appropriate
 static void Win32_DisplayBuffer(win32_Buffer* buffer, HDC DeviceContext, int WinWidth, int WinHeight)
 {
+    int xOffset = 10; int yOffset = 10;
+    
+    // Clear region outside our screen to black
+    PatBlt(DeviceContext, 0, 0, WinWidth, yOffset, BLACKNESS);
+    PatBlt(DeviceContext, 0, 0, xOffset, WinHeight, BLACKNESS);
+    PatBlt(DeviceContext, xOffset + buffer->Width, 0, WinWidth, WinHeight, BLACKNESS);
+    PatBlt(DeviceContext, 0, yOffset + buffer->Height, WinWidth, WinHeight, BLACKNESS);
+
     StretchDIBits(DeviceContext,
-            0, 0, buffer->Width, buffer->Height,
+            xOffset, yOffset, buffer->Width, buffer->Height,
             0, 0, buffer->Width, buffer->Height,
             buffer->BitmapMemory,
             &buffer->BitmapInfo,
@@ -309,6 +317,7 @@ static void Win32_DisplayBuffer(win32_Buffer* buffer, HDC DeviceContext, int Win
 }
 
 // Window Callback Procedure
+
 LRESULT CALLBACK Win32_WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
     LRESULT res = 0;
@@ -319,8 +328,8 @@ LRESULT CALLBACK Win32_WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lPa
         case WM_CLOSE:         Running = false; break;
         case WM_DESTROY:       Running = false; break;
 
-        case WM_ACTIVATEAPP:   { if (wParam == TRUE) { SetLayeredWindowAttributes(hwnd, RGB(0,0,0), 255, LWA_ALPHA); }
-                                 else                { SetLayeredWindowAttributes(hwnd, RGB(0,0,0), 64, LWA_ALPHA); }
+        case WM_ACTIVATEAPP:   {
+
                                } break;
 
         case WM_SYSKEYDOWN:
@@ -328,12 +337,12 @@ LRESULT CALLBACK Win32_WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lPa
         case WM_KEYDOWN:
         case WM_KEYUP:         break;
 
-        case WM_PAINT:       { PAINTSTRUCT Paint;
+        case WM_PAINT:         { PAINTSTRUCT Paint;
                                  HDC DeviceContext = BeginPaint(hwnd, &Paint);
                                  win32_WinDim Dimension = Win32_GetWinDim(hwnd);
                                  Win32_DisplayBuffer(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height); // display our buffer
                                  EndPaint(hwnd, &Paint);
-                             } break;
+                               } break;
 
         default:               res = DefWindowProcA(hwnd, Msg, wParam, lParam); break;
     }
@@ -650,12 +659,12 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
         HWND WindowHandle = CreateWindowExA(0, WindowClass.lpszClassName, "Handmade Hero", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
                                             CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, 0, 0, hInstance, 0);
         if (WindowHandle) {
-            
+
             // Use a windows call to grab the monitor refresh rate
             HDC refreshDC = GetDC(WindowHandle);
             int win32RefreshHz = GetDeviceCaps(refreshDC, VREFRESH);
             ReleaseDC(WindowHandle, refreshDC);
-            
+
             // Get game and monitor update rates
             int monitorRefreshHz = 60;
             if (win32RefreshHz > 1) { monitorRefreshHz = win32RefreshHz; }
@@ -705,7 +714,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                 replayBuffer->memoryBlock = MapViewOfFile(replayBuffer->memoryMap, FILE_MAP_ALL_ACCESS, 0, 0, Win32State.totalSize);
 //                 replayBuffer->memoryBlock = VirtualAlloc(0, (size_t)Win32State.totalSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
                 if (replayBuffer->memoryBlock) {
-                    
+
                 }
             }
 
@@ -717,7 +726,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                 GameInput input[2] = {};
                 GameInput* newInput = &input[0];
                 GameInput* oldInput = &input[1];
-                newInput->deltaTimeForFrame = targetSecondsPerFrame;
 
                 // some timing stuff
                 LARGE_INTEGER beginCounter = Win32_getWallClock();
@@ -739,6 +747,8 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
 
                 Running = true;
                 while (Running) {
+
+                    newInput->deltaTimeForFrame = targetSecondsPerFrame;
 
                     // Instantaneous live code editing by checking if the file changed
                     // If new write time is not the same as the old write time --> unload the game code and load the new one
@@ -779,7 +789,7 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                         Win32_ProcessKeyboard(&newInput->mouseButtons[2], GetKeyState(VK_RBUTTON)  & 1<<15);
                         Win32_ProcessKeyboard(&newInput->mouseButtons[3], GetKeyState(VK_XBUTTON1) & 1<<15);
                         Win32_ProcessKeyboard(&newInput->mouseButtons[4], GetKeyState(VK_XBUTTON2) & 1<<15);
-                        
+
                         /* Gamepad Input */
                         // In case they add more than four controllers some day (five controllers including keyboard)
                         DWORD maxControllerCount = XUSER_MAX_COUNT;

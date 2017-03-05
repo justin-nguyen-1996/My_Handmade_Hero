@@ -1,14 +1,18 @@
 
 #include "handmade.h"
 
-static int32_t roundReal32ToUInt32(real32 val) {
+inline static int32_t roundReal32ToUInt32(real32 val) {
 	uint32_t res = (uint32_t) (val + 0.5f);
 	return res;
 }
 
-static int32_t roundReal32ToInt32(real32 val) {
+inline static int32_t roundReal32ToInt32(real32 val) {
 	int32_t res = (int32_t) (val + 0.5f);
 	return res;
+}
+
+inline static int32_t truncateReal32ToInt32(real32 val) {
+	return (int32_t)(val);
 }
 
 static void drawRectangle(GameImageBuffer* buffer, 
@@ -88,13 +92,64 @@ static void GameOutputSound(GameState* gameState, GameSoundBuffer* SoundBuffer, 
 	}
 }
 
+struct tilemap {
+	int sizeX;
+	int sizeY;
+	real32 upperLeftX;
+	real32 upperLeftY;
+	real32 tileWidth;
+	real32 tileHeight;
+	uint32_t* tiles;
+};
+
+static bool isTileMapPointEmpty(tilemap* tileMap, real32 testX, real32 testY) {
+	// Map new location to a tile
+	int playerTileX = truncateReal32ToInt32((testX - tileMap->upperLeftX) / tileMap->tileWidth);
+	int playerTileY = truncateReal32ToInt32((testY - tileMap->upperLeftY) / tileMap->tileHeight);
+	
+	bool isEmpty = false;
+	if (playerTileX >= 0  &&  playerTileX < tileMap->sizeX  &&
+		playerTileY >= 0  &&  playerTileY < tileMap->sizeY) 
+	{
+		int pitch = playerTileY*tileMap->sizeX;
+		uint32_t tileMapValue = tileMap->tiles[pitch][playerTileX];
+		isEmpty = (tileMapValue == 0);
+	}
+	return isEmpty;
+}
+
+#define TILE_MAP_SIZE_X 17
+#define TILE_MAP_SIZE_Y 9
+
 // static void gameUpdateAndRender(ThreadContext* threadContext, GameMemory* memory, GameInput* input, GameImageBuffer* imageBuffer)
 extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	
 	GameState* gameState = (GameState*) memory->permanentStorage;
 
 	// Initialize the game state and memory
-	if (! memory->isInit) { memory->isInit = true; }
+	if (! memory->isInit) { 
+		gameState->playerX = 150;
+		gameState->playerY = 90;
+		memory->isInit = true; 
+	}
+	
+	// Tile map
+	uint32_t tileMap[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] = 
+	{
+		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     1, 0, 0, 1 },
+		 { 1, 0, 1, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 0 },
+		 { 1, 0, 0, 1,     1, 1, 1, 1,     0,     0, 1, 0, 0,     0, 0, 1, 0 },
+		 { 1, 1, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
+		 { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 0 },
+		 { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 1, 1, 0 },
+		 { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 0 },
+		 { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 0 },
+		 { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 1,     0, 1, 0, 0 },
+	};
+
+	// Some tile map vars
+	real32 upperLeftX = -30; real32 upperLeftY = 0;
+	real32 tileWidth = 50; real32 tileHeight = 50;
 	
 	// Handle game input
 	for (int controllerIndex = 0; controllerIndex < arrayCount(input->controllers); ++controllerIndex) {
@@ -103,38 +158,34 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 		if (controller->isAnalog) { // controller input
 			
 		} else { // keyboard input
+
+			// Figure out which direction the player moved
 			real32 deltaPlayerX = 0.0f;
 			real32 deltaPlayerY = 0.0f;
 			if (controller->moveUp.endedDown) { deltaPlayerY = -1.0f; }
 			if (controller->moveDown.endedDown) { deltaPlayerY = 1.0f; }
 			if (controller->moveRight.endedDown) { deltaPlayerX = 1.0f; }
 			if (controller->moveLeft.endedDown) { deltaPlayerX = -1.0f; }
-			deltaPlayerX *= 120.0f;
-			deltaPlayerY *= 120.0f;
-			gameState->playerX += input->deltaTimeForFrame * deltaPlayerX;
-			gameState->playerY += input->deltaTimeForFrame * deltaPlayerY;
+
+			// Scale the delta
+			deltaPlayerX *= 20.0f;
+			deltaPlayerY *= 20.0f;
+
+			// Check if the player is in a valid tile location (not out of bounds and not on another object)
+			real32 newPlayerX = gameState->playerX + input->deltaTimeForFrame * deltaPlayerX;
+			real32 newPlayerY = gameState->playerY + input->deltaTimeForFrame * deltaPlayerY;
+			bool isValid = isTileMapPointEmpty(tileMap, newPlayerX, newPlayerY);
+
+			// Only change actual location of the player if given valid coordinates
+			if (isValid) {
+				gameState->playerX = newPlayerX;
+				gameState->playerY = newPlayerY;
+			}
 		}
 	}
 
-	// Tile map
-	uint32_t tileMap[9][17] = 
-	{
-	     { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     1, 0, 0, 1 },
-	     { 1, 0, 1, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 0 },
-	     { 1, 0, 0, 1,     1, 1, 1, 1,     0,     0, 1, 0, 0,     0, 0, 1, 0 },
-	     { 1, 1, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
-	     { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 0 },
-	     { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 1, 1, 0 },
-	     { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 0 },
-	     { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 0 },
-	     { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 1,     0, 1, 0, 0 },
-	};
-
-	// Some tile map vars
-	real32 upperLeftX = -30; real32 upperLeftY = 0;
-	real32 tileWidth = 50; real32 tileHeight = 50;
-
-    drawRectangle(imageBuffer, 0.0f, 0.0f, (real32)imageBuffer->Width, (real32)imageBuffer->Height, 1.0f, 0.0f, 0.0f);
+	// White background
+    drawRectangle(imageBuffer, 0.0f, 0.0f, (real32)imageBuffer->Width, (real32)imageBuffer->Height, 1.0f, 1.0f, 1.0f);
 	
 	// Display the tile map
 	for (int row = 0; row < 9; ++row) {
@@ -150,14 +201,18 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 		}
 	}
 
-	// Draw the player
+	// Obtain player coordinates 
 	real32 playerWidth = 0.75f * tileWidth;
 	real32 playerHeight = tileHeight;
 	real32 playerLeft = gameState->playerX - (playerWidth * 0.5f);
 	real32 playerTop = gameState->playerY - playerHeight;
+	
+	// Obtain player color
 	real32 playerR = 1.0;
 	real32 playerG = 1.0;
 	real32 playerB = 0.0;
+
+	// Draw the player
 	drawRectangle(imageBuffer, playerLeft, playerTop, playerLeft + playerWidth, playerTop + playerHeight, playerR, playerG, playerB); 
 }
 
