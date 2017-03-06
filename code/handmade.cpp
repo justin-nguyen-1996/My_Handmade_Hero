@@ -92,6 +92,12 @@ static void GameOutputSound(GameState* gameState, GameSoundBuffer* SoundBuffer, 
 	}
 }
 
+inline uint32_t getTileValue(tilemap* tileMap, int x, int y) {
+	int pitch = y * tileMap->sizeX;
+	uint32_t tileVal = tileMap->tiles[pitch + x];
+	return tileVal;
+}
+
 static bool isTileMapPointEmpty(tilemap* tileMap, real32 testX, real32 testY) {
 	// Map new location to a tile
 	int playerTileX = truncateReal32ToInt32((testX - tileMap->upperLeftX) / tileMap->tileWidth);
@@ -101,8 +107,7 @@ static bool isTileMapPointEmpty(tilemap* tileMap, real32 testX, real32 testY) {
 	if (playerTileX >= 0  &&  playerTileX < tileMap->sizeX  && // make sure the player is actually on the tile map
 		playerTileY >= 0  &&  playerTileY < tileMap->sizeY) 
 	{
-		int pitch = playerTileY * tileMap->sizeX;
-		uint32_t tileMapValue = tileMap->tiles[pitch + playerTileX];
+		uint32_t tileMapValue = getTileValue(tileMap, playerTileX, playerTileY);
 		isEmpty = (tileMapValue == 0); // empty points are considered to have a values of 0 in our tile map
 	}
 	
@@ -167,6 +172,7 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	tileMaps[1] = tileMaps[0];
 	tileMaps[1].tiles = (uint32_t*) tiles1;
 
+	// Current tile map
 	tilemap* tileMap = &tileMaps[0];
 	
 	// Obtain player dimensions
@@ -212,12 +218,11 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
     drawRectangle(imageBuffer, 0.0f, 0.0f, (real32)imageBuffer->Width, (real32)imageBuffer->Height, 1.0f, 1.0f, 1.0f);
 	
 	// Display the tile map
-	for (int row = 0; row < 9; ++row) {
-		for (int col = 0; col < 17; ++col) {
-			int pitch = row * tileMap->sizeX;
-			int tileIndex = tileMap->tiles[pitch + col];
-			real32 minX = tileMap->upperLeftX + (tileMap->tileWidth * (real32)col);
-			real32 minY = tileMap->upperLeftY + (tileMap->tileHeight * (real32)row);
+	for (int y = 0; y < 9; ++y) {
+		for (int x = 0; x < 17; ++x) {
+			int tileIndex = getTileValue(tileMap, x, y);
+			real32 minX = tileMap->upperLeftX + (tileMap->tileWidth * (real32)x);
+			real32 minY = tileMap->upperLeftY + (tileMap->tileHeight * (real32)y);
 			real32 maxX = minX + tileMap->tileWidth;
 			real32 maxY = minY + tileMap->tileHeight;
 			real32 tempColor = 0.5f;
