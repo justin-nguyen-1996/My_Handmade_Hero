@@ -135,6 +135,16 @@ struct GameMemory {
 	debug_platform_write_entire_file* DEBUG_Platform_WriteEntireFile;
 };
 
+struct tilemap {
+	int sizeX;
+	int sizeY;
+	real32 upperLeftX;
+	real32 upperLeftY;
+	real32 tileWidth;
+	real32 tileHeight;
+	uint32_t* tiles;
+};
+
 /******************************************************************/
 /******** Services the game provides to the platform layer ********/
 /******************************************************************/

@@ -92,29 +92,20 @@ static void GameOutputSound(GameState* gameState, GameSoundBuffer* SoundBuffer, 
 	}
 }
 
-struct tilemap {
-	int sizeX;
-	int sizeY;
-	real32 upperLeftX;
-	real32 upperLeftY;
-	real32 tileWidth;
-	real32 tileHeight;
-	uint32_t* tiles;
-};
-
 static bool isTileMapPointEmpty(tilemap* tileMap, real32 testX, real32 testY) {
 	// Map new location to a tile
 	int playerTileX = truncateReal32ToInt32((testX - tileMap->upperLeftX) / tileMap->tileWidth);
 	int playerTileY = truncateReal32ToInt32((testY - tileMap->upperLeftY) / tileMap->tileHeight);
 	
 	bool isEmpty = false;
-	if (playerTileX >= 0  &&  playerTileX < tileMap->sizeX  &&
+	if (playerTileX >= 0  &&  playerTileX < tileMap->sizeX  && // make sure the player is actually on the tile map
 		playerTileY >= 0  &&  playerTileY < tileMap->sizeY) 
 	{
-		int pitch = playerTileY*tileMap->sizeX;
-		uint32_t tileMapValue = tileMap->tiles[pitch][playerTileX];
-		isEmpty = (tileMapValue == 0);
+		int pitch = playerTileY * tileMap->sizeX;
+		uint32_t tileMapValue = tileMap->tiles[pitch + playerTileX];
+		isEmpty = (tileMapValue == 0); // empty points are considered to have a values of 0 in our tile map
 	}
+	
 	return isEmpty;
 }
 
@@ -134,22 +125,53 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	}
 	
 	// Tile map
-	uint32_t tileMap[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] = 
+	uint32_t tiles0[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] = 
 	{
-		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     1, 0, 0, 1 },
-		 { 1, 0, 1, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 0 },
-		 { 1, 0, 0, 1,     1, 1, 1, 1,     0,     0, 1, 0, 0,     0, 0, 1, 0 },
+		 { 1, 1, 1, 1,     1, 1, 1, 1,     0,     1, 1, 1, 1,     1, 1, 1, 1 },
+		 { 1, 0, 1, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
+		 { 1, 0, 0, 1,     1, 1, 1, 1,     0,     0, 1, 0, 0,     0, 0, 1, 1 },
 		 { 1, 1, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
-		 { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 0 },
-		 { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 1, 1, 0 },
-		 { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 0 },
-		 { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 0 },
-		 { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 1,     0, 1, 0, 0 },
+		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
+		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 1, 1, 1 },
+		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
+		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
+		 { 1, 1, 1, 1,     1, 1, 1, 1,     0,     1, 1, 1, 1,     1, 1, 1, 1 },
+	};
+	
+	uint32_t tiles1[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] = 
+	{
+		{ 1, 1, 1, 1,     1, 1, 1, 1,     0,     1, 1, 1, 1,     1, 1, 1, 1 },
+		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
+		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
+		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
+		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
+		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
+		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
+		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
+		{ 1, 1, 1, 1,     1, 1, 1, 1,     0,     1, 1, 1, 1,     1, 1, 1, 1 },
 	};
 
-	// Some tile map vars
-	real32 upperLeftX = -30; real32 upperLeftY = 0;
-	real32 tileWidth = 50; real32 tileHeight = 50;
+	// Our array of tile maps
+	tilemap tileMaps[2];
+	
+	// Tile Map [0]
+	tileMaps[0].sizeX = TILE_MAP_SIZE_X;
+	tileMaps[0].sizeY = TILE_MAP_SIZE_Y;
+	tileMaps[0].upperLeftX = -30;
+	tileMaps[0].upperLeftY = 0;
+	tileMaps[0].tileWidth = 50;
+	tileMaps[0].tileHeight = 50;
+	tileMaps[0].tiles = (uint32_t*) tiles0;
+	
+	// Tile Map [1]
+	tileMaps[1] = tileMaps[0];
+	tileMaps[1].tiles = (uint32_t*) tiles1;
+
+	tilemap* tileMap = &tileMaps[0];
+	
+	// Obtain player dimensions
+	real32 playerWidth = 0.75f * tileMap->tileWidth;
+	real32 playerHeight = tileMap->tileHeight;
 	
 	// Handle game input
 	for (int controllerIndex = 0; controllerIndex < arrayCount(input->controllers); ++controllerIndex) {
@@ -171,13 +193,15 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 			deltaPlayerX *= 20.0f;
 			deltaPlayerY *= 20.0f;
 
-			// Check if the player is in a valid tile location (not out of bounds and not on another object)
+			// Put the player's new coordinates (old coordinates + input) in a temp value for testing
 			real32 newPlayerX = gameState->playerX + input->deltaTimeForFrame * deltaPlayerX;
 			real32 newPlayerY = gameState->playerY + input->deltaTimeForFrame * deltaPlayerY;
-			bool isValid = isTileMapPointEmpty(tileMap, newPlayerX, newPlayerY);
 
 			// Only change actual location of the player if given valid coordinates
-			if (isValid) {
+			if ((isTileMapPointEmpty(tileMap, newPlayerX - 0.5f*playerWidth, newPlayerY)) &&
+			    (isTileMapPointEmpty(tileMap, newPlayerX + 0.5f*playerWidth, newPlayerY)) &&
+			    (isTileMapPointEmpty(tileMap, newPlayerX, newPlayerY)))
+			{
 				gameState->playerX = newPlayerX;
 				gameState->playerY = newPlayerY;
 			}
@@ -190,11 +214,12 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	// Display the tile map
 	for (int row = 0; row < 9; ++row) {
 		for (int col = 0; col < 17; ++col) {
-			int tileIndex = tileMap[row][col];
-			real32 minX = upperLeftX + (tileWidth * (real32)col);
-			real32 minY = upperLeftY + (tileHeight * (real32)row);
-			real32 maxX = minX + tileWidth;
-			real32 maxY = minY + tileHeight;
+			int pitch = row * tileMap->sizeX;
+			int tileIndex = tileMap->tiles[pitch + col];
+			real32 minX = tileMap->upperLeftX + (tileMap->tileWidth * (real32)col);
+			real32 minY = tileMap->upperLeftY + (tileMap->tileHeight * (real32)row);
+			real32 maxX = minX + tileMap->tileWidth;
+			real32 maxY = minY + tileMap->tileHeight;
 			real32 tempColor = 0.5f;
 			if (tileIndex == 1) { tempColor = 1.0f; }
 			drawRectangle(imageBuffer, minX, minY, maxX, maxY, tempColor, tempColor, tempColor);
@@ -202,8 +227,6 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	}
 
 	// Obtain player coordinates 
-	real32 playerWidth = 0.75f * tileWidth;
-	real32 playerHeight = tileHeight;
 	real32 playerLeft = gameState->playerX - (playerWidth * 0.5f);
 	real32 playerTop = gameState->playerY - playerHeight;
 	
