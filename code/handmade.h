@@ -136,13 +136,19 @@ struct GameMemory {
 };
 
 struct tilemap {
-	int sizeX;
-	int sizeY;
+	int32_t sizeX;
+	int32_t sizeY;
 	real32 upperLeftX;
 	real32 upperLeftY;
 	real32 tileWidth;
 	real32 tileHeight;
 	uint32_t* tiles;
+};
+
+struct world {
+	int32_t sizeX;
+	int32_t sizeY;
+	tilemap* tileMaps;
 };
 
 /******************************************************************/

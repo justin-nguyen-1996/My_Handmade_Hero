@@ -92,23 +92,58 @@ static void GameOutputSound(GameState* gameState, GameSoundBuffer* SoundBuffer, 
 	}
 }
 
-inline uint32_t getTileValue(tilemap* tileMap, int x, int y) {
-	int pitch = y * tileMap->sizeX;
-	uint32_t tileVal = tileMap->tiles[pitch + x];
+inline tilemap* getTileMap(world* world, int tileMapX, int tileMapY) {
+	tilemap* tileMap = 0;
+	if (tileMapX >= 0  &&  tileMapX < world->sizeX  && // make sure the tile map coordinates are valid
+		tileMapY >= 0  &&  tileMapY < world->sizeY) 
+	{
+		int pitch = tileMapY * world->sizeX;
+		tileMap = &(world->tileMaps[pitch + tileMapX]);
+	}
+	return tileMap;
+}
+
+inline uint32_t getTileValue(tilemap* tileMap, int tileX, int tileY) {
+	int pitch = tileY * tileMap->sizeX;
+	uint32_t tileVal = tileMap->tiles[pitch + tileX];
 	return tileVal;
 }
 
 static bool isTileMapPointEmpty(tilemap* tileMap, real32 testX, real32 testY) {
+	
+	bool isEmpty = false;
+	
 	// Map new location to a tile
 	int playerTileX = truncateReal32ToInt32((testX - tileMap->upperLeftX) / tileMap->tileWidth);
 	int playerTileY = truncateReal32ToInt32((testY - tileMap->upperLeftY) / tileMap->tileHeight);
 	
-	bool isEmpty = false;
 	if (playerTileX >= 0  &&  playerTileX < tileMap->sizeX  && // make sure the player is actually on the tile map
 		playerTileY >= 0  &&  playerTileY < tileMap->sizeY) 
 	{
 		uint32_t tileMapValue = getTileValue(tileMap, playerTileX, playerTileY);
 		isEmpty = (tileMapValue == 0); // empty points are considered to have a values of 0 in our tile map
+	}
+	
+	return isEmpty;
+}
+
+static bool isWorldMapPointEmpty(world* world, uint32_t tileMapX, uint32_t tileMapY, real32 testX, real32 testY) {
+	
+	bool isEmpty = false;
+	tilemap* tileMap = getTileMap(world, tileMapX, tileMapY);
+	
+	if (tileMap) {
+		
+		// Map new location to a tile
+		int playerTileX = truncateReal32ToInt32((testX - tileMap->upperLeftX) / tileMap->tileWidth);
+		int playerTileY = truncateReal32ToInt32((testY - tileMap->upperLeftY) / tileMap->tileHeight);
+		
+		if (playerTileX >= 0  &&  playerTileX < tileMap->sizeX  && // make sure the player is actually on the tile map
+			playerTileY >= 0  &&  playerTileY < tileMap->sizeY) 
+		{
+			uint32_t tileMapValue = getTileValue(tileMap, playerTileX, playerTileY);
+			isEmpty = (tileMapValue == 0); // empty points are considered to have a values of 0 in our tile map
+		}
 	}
 	
 	return isEmpty;
@@ -130,26 +165,52 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	}
 	
 	// Tile map
-	uint32_t tiles0[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] = 
+	uint32_t tiles00[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] = 
 	{
 		 { 1, 1, 1, 1,     1, 1, 1, 1,     0,     1, 1, 1, 1,     1, 1, 1, 1 },
 		 { 1, 0, 1, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
 		 { 1, 0, 0, 1,     1, 1, 1, 1,     0,     0, 1, 0, 0,     0, 0, 1, 1 },
 		 { 1, 1, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
-		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
+		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 0 },
 		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 1, 1, 1 },
 		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
 		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
 		 { 1, 1, 1, 1,     1, 1, 1, 1,     0,     1, 1, 1, 1,     1, 1, 1, 1 },
 	};
 	
-	uint32_t tiles1[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] = 
+	uint32_t tiles01[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] = 
 	{
 		{ 1, 1, 1, 1,     1, 1, 1, 1,     0,     1, 1, 1, 1,     1, 1, 1, 1 },
 		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
 		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
 		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
+		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 0 },
 		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
+		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
+		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
+		{ 1, 1, 1, 1,     1, 1, 1, 1,     0,     1, 1, 1, 1,     1, 1, 1, 1 },
+	};
+	
+	uint32_t tiles10[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] = 
+	{
+		 { 1, 1, 1, 1,     1, 1, 1, 1,     1,     1, 1, 1, 1,     1, 1, 1, 1 },
+		 { 1, 0, 1, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
+		 { 1, 0, 0, 1,     1, 1, 1, 1,     0,     0, 1, 0, 0,     0, 0, 1, 1 },
+		 { 1, 1, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
+		 { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
+		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 1, 1, 1 },
+		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
+		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
+		 { 1, 1, 1, 1,     1, 1, 1, 1,     0,     1, 1, 1, 1,     1, 1, 1, 1 },
+	};
+	
+	uint32_t tiles11[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] = 
+	{
+		{ 1, 1, 1, 1,     1, 1, 1, 1,     0,     1, 1, 1, 1,     1, 1, 1, 1 },
+		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
+		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
+		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
+		{ 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
 		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
 		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
 		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
@@ -157,23 +218,35 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	};
 
 	// Our array of tile maps
-	tilemap tileMaps[2];
+	tilemap tileMaps[2][2];
 	
-	// Tile Map [0]
-	tileMaps[0].sizeX = TILE_MAP_SIZE_X;
-	tileMaps[0].sizeY = TILE_MAP_SIZE_Y;
-	tileMaps[0].upperLeftX = -30;
-	tileMaps[0].upperLeftY = 0;
-	tileMaps[0].tileWidth = 50;
-	tileMaps[0].tileHeight = 50;
-	tileMaps[0].tiles = (uint32_t*) tiles0;
+	// Tile Map [0][0]
+	tileMaps[0][0].sizeX = TILE_MAP_SIZE_X;
+	tileMaps[0][0].sizeY = TILE_MAP_SIZE_Y;
+	tileMaps[0][0].upperLeftX = -30;
+	tileMaps[0][0].upperLeftY = 0;
+	tileMaps[0][0].tileWidth = 50;
+	tileMaps[0][0].tileHeight = 50;
+	tileMaps[0][0].tiles = (uint32_t*) tiles00;
 	
-	// Tile Map [1]
-	tileMaps[1] = tileMaps[0];
-	tileMaps[1].tiles = (uint32_t*) tiles1;
+	// Tile Map [0][1]
+	tileMaps[0][1] = tileMaps[0][0];
+	tileMaps[0][1].tiles = (uint32_t*) tiles01;
+	
+	// Tile Map [1][0]
+	tileMaps[1][0] = tileMaps[0][0];
+	tileMaps[1][0].tiles = (uint32_t*) tiles10;
+	
+	// Tile Map [1][1]
+	tileMaps[1][1] = tileMaps[0][0];
+	tileMaps[1][1].tiles = (uint32_t*) tiles11;
 
 	// Current tile map
-	tilemap* tileMap = &tileMaps[0];
+	tilemap* tileMap = &tileMaps[0][0];
+
+	// World struct
+	world world;
+	world.tileMaps = (tilemap*) tileMaps;
 	
 	// Obtain player dimensions
 	real32 playerWidth = 0.75f * tileMap->tileWidth;
