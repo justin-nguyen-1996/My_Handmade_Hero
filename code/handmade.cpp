@@ -103,47 +103,67 @@ inline tilemap* getTileMap(world* world, int tileMapX, int tileMapY) {
 	return tileMap;
 }
 
-inline uint32_t getTileValue(tilemap* tileMap, int tileX, int tileY) {
-	int pitch = tileY * tileMap->sizeX;
+inline uint32_t getTileValue(world* world, tilemap* tileMap, int tileX, int tileY) {
+	assert(tileMap);
+	assert (tileX >= 0  &&  tileX < world->sizeX  && // make sure the player is actually on the tile map
+		    tileY>= 0  &&  tileY < world->sizeY) 
+		
+	int pitch = tileY * world->sizeX;
 	uint32_t tileVal = tileMap->tiles[pitch + tileX];
 	return tileVal;
 }
 
-static bool isTileMapPointEmpty(tilemap* tileMap, real32 testX, real32 testY) {
+static bool isTileMapPointEmpty(world* world, tilemap* tileMap, int32_t testTileX, int32_t testTileY) {
 	
 	bool isEmpty = false;
 	
-	// Map new location to a tile
-	int playerTileX = truncateReal32ToInt32((testX - tileMap->upperLeftX) / tileMap->tileWidth);
-	int playerTileY = truncateReal32ToInt32((testY - tileMap->upperLeftY) / tileMap->tileHeight);
-	
-	if (playerTileX >= 0  &&  playerTileX < tileMap->sizeX  && // make sure the player is actually on the tile map
-		playerTileY >= 0  &&  playerTileY < tileMap->sizeY) 
-	{
-		uint32_t tileMapValue = getTileValue(tileMap, playerTileX, playerTileY);
-		isEmpty = (tileMapValue == 0); // empty points are considered to have a values of 0 in our tile map
+	if (tileMap) {
+		
+		if (testTileX >= 0  &&  testTileX < world->sizeX  && // make sure the player is actually on the tile map
+			testTileY >= 0  &&  testTileY < world->sizeY) 
+		{
+			uint32_t tileMapValue = getTileValue(world, tileMap, testTileX, testTileY);
+			isEmpty = (tileMapValue == 0); // empty points are considered to have a values of 0 in our tile map
+		}
 	}
 	
 	return isEmpty;
 }
 
-static bool isWorldMapPointEmpty(world* world, uint32_t tileMapX, uint32_t tileMapY, real32 testX, real32 testY) {
+static bool isWorldMapPointEmpty(world* world, uint32_t testTileMapX, uint32_t testTileMapY, real32 testX, real32 testY) {
 	
 	bool isEmpty = false;
-	tilemap* tileMap = getTileMap(world, tileMapX, tileMapY);
 	
-	if (tileMap) {
-		
-		// Map new location to a tile
-		int playerTileX = truncateReal32ToInt32((testX - tileMap->upperLeftX) / tileMap->tileWidth);
-		int playerTileY = truncateReal32ToInt32((testY - tileMap->upperLeftY) / tileMap->tileHeight);
-		
-		if (playerTileX >= 0  &&  playerTileX < tileMap->sizeX  && // make sure the player is actually on the tile map
-			playerTileY >= 0  &&  playerTileY < tileMap->sizeY) 
-		{
-			uint32_t tileMapValue = getTileValue(tileMap, playerTileX, playerTileY);
-			isEmpty = (tileMapValue == 0); // empty points are considered to have a values of 0 in our tile map
-		}
+	// Map new location to a tile
+	int playerTileX = truncateReal32ToInt32((testX - world->upperLeftX) / world->tileWidth);
+	int playerTileY = truncateReal32ToInt32((testY - world->upperLeftY) / world->tileHeight);
+
+	// Account for moving into a different tile map
+	if (playerTileX < 0) {
+		playerTileX += world->sizeX;
+		testTileMapX -= 1;
+	}
+	if (playerTileY < 0) {
+		playerTileY += world->sizeY;
+		testTileMapY -= 1;
+	}
+	if (playerTileX > 0) {
+		playerTileX -= world->sizeX;
+		testTileMapX += 1;
+	}
+	if (playerTileY > 0) {
+		playerTileY -= world->sizeY;
+		testTileMapY += 1;
+	}
+
+	tilemap* tileMap = getTileMap(world, testTileMapX, testTileMapY);
+	isTileMapPointEmpty(world, tileMap, playerTileX, playerTileY);
+	
+	if (playerTileX >= 0  &&  playerTileX < world->sizeX  && // make sure the player is actually on the tile map
+		playerTileY >= 0  &&  playerTileY < world->sizeY) 
+	{
+		uint32_t tileMapValue = getTileValue(world, tileMap, playerTileX, playerTileY);
+		isEmpty = (tileMapValue == 0); // empty points are considered to have a values of 0 in our tile map
 	}
 	
 	return isEmpty;
@@ -220,37 +240,29 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	// Our array of tile maps
 	tilemap tileMaps[2][2];
 	
-	// Tile Map [0][0]
-	tileMaps[0][0].sizeX = TILE_MAP_SIZE_X;
-	tileMaps[0][0].sizeY = TILE_MAP_SIZE_Y;
-	tileMaps[0][0].upperLeftX = -30;
-	tileMaps[0][0].upperLeftY = 0;
-	tileMaps[0][0].tileWidth = 50;
-	tileMaps[0][0].tileHeight = 50;
+	// World struct
+	world world;
+	world.sizeX = TILE_MAP_SIZE_X;
+	world.sizeY = TILE_MAP_SIZE_Y;
+	world.upperLeftX = -30;
+	world.upperLeftY = 0;
+	world.tileWidth = 50;
+	world.tileHeight = 50;
+	world.tileMaps = (tilemap*) tileMaps;
+	
+	// Pointing our tilemap structs to our array of numbers above
 	tileMaps[0][0].tiles = (uint32_t*) tiles00;
-	
-	// Tile Map [0][1]
-	tileMaps[0][1] = tileMaps[0][0];
 	tileMaps[0][1].tiles = (uint32_t*) tiles01;
-	
-	// Tile Map [1][0]
-	tileMaps[1][0] = tileMaps[0][0];
 	tileMaps[1][0].tiles = (uint32_t*) tiles10;
-	
-	// Tile Map [1][1]
-	tileMaps[1][1] = tileMaps[0][0];
 	tileMaps[1][1].tiles = (uint32_t*) tiles11;
 
 	// Current tile map
-	tilemap* tileMap = &tileMaps[0][0];
-
-	// World struct
-	world world;
-	world.tileMaps = (tilemap*) tileMaps;
+	tilemap* tileMap = getTileMap(&world, gameState->playerTileMapX, gameState->playerTileMapY);
+	assert(tileMap);
 	
 	// Obtain player dimensions
-	real32 playerWidth = 0.75f * tileMap->tileWidth;
-	real32 playerHeight = tileMap->tileHeight;
+	real32 playerWidth = 0.75f * world.tileWidth;
+	real32 playerHeight = world.tileHeight;
 	
 	// Handle game input
 	for (int controllerIndex = 0; controllerIndex < arrayCount(input->controllers); ++controllerIndex) {
@@ -277,9 +289,9 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 			real32 newPlayerY = gameState->playerY + input->deltaTimeForFrame * deltaPlayerY;
 
 			// Only change actual location of the player if given valid coordinates
-			if ((isTileMapPointEmpty(tileMap, newPlayerX - 0.5f*playerWidth, newPlayerY)) &&
-			    (isTileMapPointEmpty(tileMap, newPlayerX + 0.5f*playerWidth, newPlayerY)) &&
-			    (isTileMapPointEmpty(tileMap, newPlayerX, newPlayerY)))
+			if ((isTileMapPointEmpty(&world, tileMap, newPlayerX - 0.5f*playerWidth, newPlayerY)) &&
+			    (isTileMapPointEmpty(&world, tileMap, newPlayerX + 0.5f*playerWidth, newPlayerY)) &&
+			    (isTileMapPointEmpty(&world, tileMap, newPlayerX, newPlayerY)))
 			{
 				gameState->playerX = newPlayerX;
 				gameState->playerY = newPlayerY;
@@ -293,11 +305,11 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	// Display the tile map
 	for (int y = 0; y < 9; ++y) {
 		for (int x = 0; x < 17; ++x) {
-			int tileIndex = getTileValue(tileMap, x, y);
-			real32 minX = tileMap->upperLeftX + (tileMap->tileWidth * (real32)x);
-			real32 minY = tileMap->upperLeftY + (tileMap->tileHeight * (real32)y);
-			real32 maxX = minX + tileMap->tileWidth;
-			real32 maxY = minY + tileMap->tileHeight;
+			int tileIndex = getTileValue(&world, tileMap, x, y);
+			real32 minX = world.upperLeftX + (world.tileWidth * (real32)x);
+			real32 minY = world.upperLeftY + (world.tileHeight * (real32)y);
+			real32 maxX = minX + world.tileWidth;
+			real32 maxY = minY + world.tileHeight;
 			real32 tempColor = 0.5f;
 			if (tileIndex == 1) { tempColor = 1.0f; }
 			drawRectangle(imageBuffer, minX, minY, maxX, maxY, tempColor, tempColor, tempColor);

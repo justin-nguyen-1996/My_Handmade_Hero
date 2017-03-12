@@ -20,21 +20,28 @@
 #define   Gigabytes(val)      (Megabytes(val) * 1024LL)
 #define   Terabytes(val)      (Gigabytes(val) * 1024LL)
 
-struct tilemap {
-	int32_t sizeX;
-	int32_t sizeY;
+typedef struct tilemap {
+	uint32_t* tiles;
+} tilemap;
+
+typedef struct world {
+	// constant values for the tile maps
 	real32 upperLeftX;
 	real32 upperLeftY;
 	real32 tileWidth;
 	real32 tileHeight;
-	uint32_t* tiles;
-};
-
-struct world {
+	
 	int32_t sizeX;
 	int32_t sizeY;
 	tilemap* tileMaps;
-};
+} world;
+
+typedef struct GameState {
+	int32_t playerTileMapX;
+	int32_t playerTileMapY;
+	real32 playerX;
+	real32 playerY;
+} GameState;
 
 /******************************************************************/
 /******** Services the platform provides to the game layer ********/
