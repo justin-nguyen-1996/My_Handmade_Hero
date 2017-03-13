@@ -3,7 +3,7 @@
 
 #include "handmade_platform.h"
 
-// HANDMADE_SLOW function macros
+// #define HANDMADE_SLOW 1
 #if HANDMADE_SLOW
 	#define   assert(expression)  if (! (expression)) { *(int*) 0 = 0; }
 #else
@@ -24,23 +24,31 @@ typedef struct tilemap {
 	uint32_t* tiles;
 } tilemap;
 
+// Holds info on fixed tile map sizes and holds all of the tile maps
 typedef struct world {
-	// constant values for the tile maps
+	// fixed tile map sizes
 	real32 upperLeftX;
 	real32 upperLeftY;
 	real32 tileWidth;
 	real32 tileHeight;
+	int32_t numTilesX;
+	int32_t numTilesY;
 	
-	int32_t sizeX;
-	int32_t sizeY;
+	// number of tile maps
+	int32_t numTileMapsX;
+	int32_t numTileMapsY;
+
+	// all of the tile maps
 	tilemap* tileMaps;
+	
 } world;
 
+// Holds info on where the player is (which tile map and which tile)
 typedef struct GameState {
 	int32_t playerTileMapX;
 	int32_t playerTileMapY;
-	real32 playerX;
-	real32 playerY;
+	real32 playerTileX;
+	real32 playerTileY;
 } GameState;
 
 /******************************************************************/

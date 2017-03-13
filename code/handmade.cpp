@@ -94,10 +94,10 @@ static void GameOutputSound(GameState* gameState, GameSoundBuffer* SoundBuffer, 
 
 inline tilemap* getTileMap(world* world, int tileMapX, int tileMapY) {
 	tilemap* tileMap = 0;
-	if (tileMapX >= 0  &&  tileMapX < world->sizeX  && // make sure the tile map coordinates are valid
-		tileMapY >= 0  &&  tileMapY < world->sizeY) 
+	if (tileMapX >= 0  &&  tileMapX < world->numTileMapsX  && // make sure the tile map coordinates are valid
+		tileMapY >= 0  &&  tileMapY < world->numTileMapsY) 
 	{
-		int pitch = tileMapY * world->sizeX;
+		int pitch = tileMapY * world->numTileMapsX;
 		tileMap = &(world->tileMaps[pitch + tileMapX]);
 	}
 	return tileMap;
@@ -105,10 +105,10 @@ inline tilemap* getTileMap(world* world, int tileMapX, int tileMapY) {
 
 inline uint32_t getTileValue(world* world, tilemap* tileMap, int tileX, int tileY) {
 	assert(tileMap);
-	assert (tileX >= 0  &&  tileX < world->sizeX  && // make sure the player is actually on the tile map
-		    tileY>= 0  &&  tileY < world->sizeY) 
+	assert (tileX >= 0  &&  tileX < world->numTilesX  && // make sure the player is actually on the tile map
+		    tileY>= 0  &&  tileY < world->numTilesY) 
 		
-	int pitch = tileY * world->sizeX;
+	int pitch = tileY * world->numTilesX;
 	uint32_t tileVal = tileMap->tiles[pitch + tileX];
 	return tileVal;
 }
@@ -119,8 +119,8 @@ static bool isTileMapPointEmpty(world* world, tilemap* tileMap, int32_t testTile
 	
 	if (tileMap) {
 		
-		if (testTileX >= 0  &&  testTileX < world->sizeX  && // make sure the player is actually on the tile map
-			testTileY >= 0  &&  testTileY < world->sizeY) 
+		if (testTileX >= 0  &&  testTileX < world->numTilesX  && // make sure the player is actually on the tile map
+			testTileY >= 0  &&  testTileY < world->numTilesY) 
 		{
 			uint32_t tileMapValue = getTileValue(world, tileMap, testTileX, testTileY);
 			isEmpty = (tileMapValue == 0); // empty points are considered to have a values of 0 in our tile map
@@ -140,36 +140,30 @@ static bool isWorldMapPointEmpty(world* world, uint32_t testTileMapX, uint32_t t
 
 	// Account for moving into a different tile map
 	if (playerTileX < 0) {
-		playerTileX += world->sizeX;
+		playerTileX += world->numTilesX;
 		testTileMapX -= 1;
 	}
 	if (playerTileY < 0) {
-		playerTileY += world->sizeY;
+		playerTileY += world->numTilesY;
 		testTileMapY -= 1;
 	}
-	if (playerTileX > 0) {
-		playerTileX -= world->sizeX;
+	if (playerTileX >= world->numTilesX) {
+		playerTileX -= world->numTilesX;
 		testTileMapX += 1;
 	}
-	if (playerTileY > 0) {
-		playerTileY -= world->sizeY;
+	if (playerTileY >= world->numTilesY) {
+		playerTileY -= world->numTilesY;
 		testTileMapY += 1;
 	}
 
 	tilemap* tileMap = getTileMap(world, testTileMapX, testTileMapY);
-	isTileMapPointEmpty(world, tileMap, playerTileX, playerTileY);
-	
-	if (playerTileX >= 0  &&  playerTileX < world->sizeX  && // make sure the player is actually on the tile map
-		playerTileY >= 0  &&  playerTileY < world->sizeY) 
-	{
-		uint32_t tileMapValue = getTileValue(world, tileMap, playerTileX, playerTileY);
-		isEmpty = (tileMapValue == 0); // empty points are considered to have a values of 0 in our tile map
-	}
+	isEmpty = isTileMapPointEmpty(world, tileMap, playerTileX, playerTileY);
 	
 	return isEmpty;
 }
 
 #define TILE_MAP_SIZE_X 17
+
 #define TILE_MAP_SIZE_Y 9
 
 // static void gameUpdateAndRender(ThreadContext* threadContext, GameMemory* memory, GameInput* input, GameImageBuffer* imageBuffer)
@@ -179,82 +173,84 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 
 	// Initialize the game state and memory
 	if (! memory->isInit) { 
-		gameState->playerX = 150;
-		gameState->playerY = 90;
+		gameState->playerTileX = 150;
+		gameState->playerTileY = 150;
 		memory->isInit = true; 
 	}
-	
+		
 	// Tile map
 	uint32_t tiles00[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] = 
-	{
-		 { 1, 1, 1, 1,     1, 1, 1, 1,     0,     1, 1, 1, 1,     1, 1, 1, 1 },
-		 { 1, 0, 1, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
-		 { 1, 0, 0, 1,     1, 1, 1, 1,     0,     0, 1, 0, 0,     0, 0, 1, 1 },
-		 { 1, 1, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
-		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 0 },
-		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 1, 1, 1 },
-		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
-		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
-		 { 1, 1, 1, 1,     1, 1, 1, 1,     0,     1, 1, 1, 1,     1, 1, 1, 1 },
-	};
+    {
+        {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1, 1},
+        {1, 1, 0, 0,  0, 1, 0, 0,  0, 0, 0, 0,  0, 1, 0, 0, 1},
+        {1, 1, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 1, 0, 1},
+        {1, 0, 0, 0,  0, 0, 0, 0,  1, 0, 0, 0,  0, 0, 0, 0, 1},
+        {1, 0, 0, 0,  0, 1, 0, 0,  1, 0, 0, 0,  0, 0, 0, 0, 0},
+        {1, 1, 0, 0,  0, 1, 0, 0,  1, 0, 0, 0,  0, 1, 0, 0, 1},
+        {1, 0, 0, 0,  0, 1, 0, 0,  1, 0, 0, 0,  1, 0, 0, 0, 1},
+        {1, 1, 1, 1,  1, 0, 0, 0,  0, 0, 0, 0,  0, 1, 0, 0, 1},
+        {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1, 1},
+    };
+    
+    uint32_t tiles01[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] =
+    {
+        {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1, 1},
+        {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 0},
+        {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1, 1},
+    };
+    
+    uint32_t tiles10[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] =
+    {
+        {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1, 1},
+        {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1, 1},
+    };
 	
-	uint32_t tiles01[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] = 
-	{
-		{ 1, 1, 1, 1,     1, 1, 1, 1,     0,     1, 1, 1, 1,     1, 1, 1, 1 },
-		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
-		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
-		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
-		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 0 },
-		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
-		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
-		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
-		{ 1, 1, 1, 1,     1, 1, 1, 1,     0,     1, 1, 1, 1,     1, 1, 1, 1 },
-	};
-	
-	uint32_t tiles10[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] = 
-	{
-		 { 1, 1, 1, 1,     1, 1, 1, 1,     1,     1, 1, 1, 1,     1, 1, 1, 1 },
-		 { 1, 0, 1, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
-		 { 1, 0, 0, 1,     1, 1, 1, 1,     0,     0, 1, 0, 0,     0, 0, 1, 1 },
-		 { 1, 1, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
-		 { 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
-		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 1, 1, 1 },
-		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
-		 { 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 1, 0, 0,     0, 0, 0, 1 },
-		 { 1, 1, 1, 1,     1, 1, 1, 1,     0,     1, 1, 1, 1,     1, 1, 1, 1 },
-	};
-	
-	uint32_t tiles11[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] = 
-	{
-		{ 1, 1, 1, 1,     1, 1, 1, 1,     0,     1, 1, 1, 1,     1, 1, 1, 1 },
-		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
-		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
-		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
-		{ 0, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
-		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
-		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
-		{ 1, 0, 0, 0,     0, 0, 0, 0,     0,     0, 0, 0, 0,     0, 0, 0, 1 },
-		{ 1, 1, 1, 1,     1, 1, 1, 1,     0,     1, 1, 1, 1,     1, 1, 1, 1 },
-	};
+	uint32_t tiles11[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] =
+    {
+        {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1, 1},
+        {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
+        {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1, 1},
+    };
 
 	// Our array of tile maps
 	tilemap tileMaps[2][2];
 	
-	// World struct
-	world world;
-	world.sizeX = TILE_MAP_SIZE_X;
-	world.sizeY = TILE_MAP_SIZE_Y;
-	world.upperLeftX = -30;
-	world.upperLeftY = 0;
-	world.tileWidth = 50;
-	world.tileHeight = 50;
-	world.tileMaps = (tilemap*) tileMaps;
-	
 	// Pointing our tilemap structs to our array of numbers above
 	tileMaps[0][0].tiles = (uint32_t*) tiles00;
-	tileMaps[0][1].tiles = (uint32_t*) tiles01;
-	tileMaps[1][0].tiles = (uint32_t*) tiles10;
+	tileMaps[0][1].tiles = (uint32_t*) tiles10;
+	tileMaps[1][0].tiles = (uint32_t*) tiles01;
 	tileMaps[1][1].tiles = (uint32_t*) tiles11;
+	
+	// World struct
+	world world;
+	world.numTileMapsX = 2;
+	world.numTileMapsY = 2;
+	world.numTilesX = TILE_MAP_SIZE_X;
+	world.numTilesY = TILE_MAP_SIZE_Y;
+	world.upperLeftX = -30;
+	world.upperLeftY = 0;
+	world.tileWidth = 60;
+	world.tileHeight = 60;
+	world.tileMaps = (tilemap*) tileMaps;
 
 	// Current tile map
 	tilemap* tileMap = getTileMap(&world, gameState->playerTileMapX, gameState->playerTileMapY);
@@ -281,20 +277,20 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 			if (controller->moveLeft.endedDown) { deltaPlayerX = -1.0f; }
 
 			// Scale the delta
-			deltaPlayerX *= 20.0f;
-			deltaPlayerY *= 20.0f;
+			deltaPlayerX *= 40.0f;
+			deltaPlayerY *= 40.0f;
 
 			// Put the player's new coordinates (old coordinates + input) in a temp value for testing
-			real32 newPlayerX = gameState->playerX + input->deltaTimeForFrame * deltaPlayerX;
-			real32 newPlayerY = gameState->playerY + input->deltaTimeForFrame * deltaPlayerY;
+			real32 newPlayerX = gameState->playerTileX + input->deltaTimeForFrame * deltaPlayerX;
+			real32 newPlayerY = gameState->playerTileY + input->deltaTimeForFrame * deltaPlayerY;
 
 			// Only change actual location of the player if given valid coordinates
-			if ((isTileMapPointEmpty(&world, tileMap, newPlayerX - 0.5f*playerWidth, newPlayerY)) &&
-			    (isTileMapPointEmpty(&world, tileMap, newPlayerX + 0.5f*playerWidth, newPlayerY)) &&
-			    (isTileMapPointEmpty(&world, tileMap, newPlayerX, newPlayerY)))
+			if ((isWorldMapPointEmpty(&world, gameState->playerTileMapX, gameState->playerTileMapY, newPlayerX - 0.5f*playerWidth, newPlayerY)) &&
+			    (isWorldMapPointEmpty(&world, gameState->playerTileMapX, gameState->playerTileMapY, newPlayerX + 0.5f*playerWidth, newPlayerY)) &&
+			    (isWorldMapPointEmpty(&world, gameState->playerTileMapX, gameState->playerTileMapY, newPlayerX, newPlayerY)))
 			{
-				gameState->playerX = newPlayerX;
-				gameState->playerY = newPlayerY;
+				gameState->playerTileX = newPlayerX;
+				gameState->playerTileY = newPlayerY;
 			}
 		}
 	}
@@ -317,8 +313,8 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	}
 
 	// Obtain player coordinates 
-	real32 playerLeft = gameState->playerX - (playerWidth * 0.5f);
-	real32 playerTop = gameState->playerY - playerHeight;
+	real32 playerLeft = gameState->playerTileX - (playerWidth * 0.5f);
+	real32 playerTop = gameState->playerTileY - playerHeight;
 	
 	// Obtain player color
 	real32 playerR = 1.0;
