@@ -46,11 +46,12 @@ typedef struct raw_world_pos {
 
 // Holds info on fixed tile map sizes and holds all of the tile maps
 typedef struct world {
+ 
 	// fixed tile map sizes
+	real32 tileSideInMeters;
+	int32_t tileSideInPixels;
 	real32 upperLeftX;
 	real32 upperLeftY;
-	real32 tileWidth;
-	real32 tileHeight;
 	int32_t numTilesX;
 	int32_t numTilesY;
 	

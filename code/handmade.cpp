@@ -1,24 +1,6 @@
 
 #include "handmade.h"
-
-inline static int32_t roundReal32ToUInt32(real32 val) {
-	uint32_t res = (uint32_t) (val + 0.5f);
-	return res;
-}
-
-inline static int32_t roundReal32ToInt32(real32 val) {
-	int32_t res = (int32_t) (val + 0.5f);
-	return res;
-}
-
-#include "math.h"
-inline static int32_t floorReal32ToInt32(real32 val) {
-	return (int32_t)floorf(val);
-}
-
-inline static int32_t truncateReal32ToInt32(real32 val) {
-	return (int32_t)(val);
-}
+#include "handmade_intrinsics.h"
 
 static void drawRectangle(GameImageBuffer* buffer, 
 						  real32 realMinX, real32 realMinY, 
@@ -144,15 +126,15 @@ inline canonical_world_pos getCanonicalPosition(world* world, raw_world_pos* pos
 	// Map new location to a tile and tile-relative values
 	real32 x = pos->x - world->upperLeftX; // remove offsets and map into world space (instead of array space)
 	real32 y = pos->y - world->upperLeftY;
-	res.tileX = floorReal32ToInt32(x / world->tileWidth);
-	res.tileY = floorReal32ToInt32(y / world->tileHeight);
-	res.x = x - (res.tileX * world->tileWidth);
-	res.y = y - (res.tileY * world->tileHeight);
+	res.tileX = floorReal32ToInt32(x / world->tileSideInPixels);
+	res.tileY = floorReal32ToInt32(y / world->tileSideInPixels);
+	res.x = x - (res.tileX * world->tileSideInPixels);
+	res.y = y - (res.tileY * world->tileSideInPixels);
 
 	assert(res.x >= 0);
 	assert(res.y >= 0);
-	assert(res.x < world->tileWidth);
-	assert(res.y < world->tileHeight);
+	assert(res.x < world->tileSideInPixels);
+	assert(res.y < world->tileSideInPixels);
 
 	// Account for moving into a different tile map
 	if (res.tileX < 0) {
@@ -263,14 +245,16 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	
 	// World struct
 	world world;
+	world.tileSideInMeters = 1.4f;
+	world.tileSideInPixels = 60;
 	world.numTileMapsX = 2;
 	world.numTileMapsY = 2;
 	world.numTilesX = TILE_MAP_SIZE_X;
 	world.numTilesY = TILE_MAP_SIZE_Y;
-	world.upperLeftX = -30;
+	world.upperLeftX = -(real32)world.tileSideInPixels;
 	world.upperLeftY = 0;
-	world.tileWidth = 60;
-	world.tileHeight = 60;
+	world.tileSideInPixels = 60;
+	world.tileSideInPixels = 60;
 	world.tileMaps = (tilemap*) tileMaps;
 
 	// Current tile map
@@ -278,8 +262,8 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	assert(tileMap);
 	
 	// Obtain player dimensions
-	real32 playerWidth = 0.75f * world.tileWidth;
-	real32 playerHeight = world.tileHeight;
+	real32 playerWidth = 0.75f * world.tileSideInPixels;
+	real32 playerHeight = (real32) world.tileSideInPixels;
 	
 	// Handle game input
 	for (int controllerIndex = 0; controllerIndex < arrayCount(input->controllers); ++controllerIndex) {
@@ -318,8 +302,8 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 				canonical_world_pos canPos = getCanonicalPosition(&world, &playerPos);
 				gameState->playerTileMapX = canPos.tileMapX;
 				gameState->playerTileMapY = canPos.tileMapY;
-				gameState->playerX = world.upperLeftX + canPos.tileX*world.tileWidth + canPos.x; // adjust for tile-relative x & y
-				gameState->playerY = world.upperLeftY + canPos.tileY*world.tileHeight + canPos.y; 
+				gameState->playerX = world.upperLeftX + canPos.tileX*world.tileSideInPixels + canPos.x; // adjust for tile-relative x & y
+				gameState->playerY = world.upperLeftY + canPos.tileY*world.tileSideInPixels + canPos.y; 
 			}
 		}
 	}
@@ -327,14 +311,14 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	// White background
     drawRectangle(imageBuffer, 0.0f, 0.0f, (real32)imageBuffer->Width, (real32)imageBuffer->Height, 1.0f, 1.0f, 1.0f);
 	
-	// Display the tile map
+	// Display the tile map (get tile ID, get rectangle bounds, call drawRect)
 	for (int y = 0; y < 9; ++y) {
 		for (int x = 0; x < 17; ++x) {
 			int tileIndex = getTileValue(&world, tileMap, x, y);
-			real32 minX = world.upperLeftX + (world.tileWidth * (real32)x);
-			real32 minY = world.upperLeftY + (world.tileHeight * (real32)y);
-			real32 maxX = minX + world.tileWidth;
-			real32 maxY = minY + world.tileHeight;
+			real32 minX = world.upperLeftX + (world.tileSideInPixels * (real32)x);
+			real32 minY = world.upperLeftY + (world.tileSideInPixels * (real32)y);
+			real32 maxX = minX + world.tileSideInPixels;
+			real32 maxY = minY + world.tileSideInPixels;
 			real32 tempColor = 0.5f;
 			if (tileIndex == 1) { tempColor = 1.0f; }
 			drawRectangle(imageBuffer, minX, minY, maxX, maxY, tempColor, tempColor, tempColor);
@@ -342,8 +326,8 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	} 
 
 	// Obtain player coordinates 
-	real32 playerLeft = gameState->playerX - (playerWidth * 0.5f);
-	real32 playerTop = gameState->playerY - playerHeight;
+	real32 playerLeft = gameState->playerX - (playerWidth * 0.5f); // playerX is the middle of the player
+	real32 playerTop = gameState->playerY - playerHeight; // playerY is the bottom of the player
 	
 	// Obtain player color
 	real32 playerR = 1.0;
