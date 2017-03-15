@@ -1,14 +1,14 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.24720.0
+# Visual Studio 15
+VisualStudioVersion = 15.0.26228.4
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{911E67C6-3D85-4FCE-B560-20A9C3E3FF48}") = "win32_handmade", "win32_handmade.exe", "{6CC2382D-CFF6-41DA-9A72-E8ADC913BA28}"
 	ProjectSection(DebuggerProjectSystem) = preProject
 		PortSupplier = 00000000-0000-0000-0000-000000000000
-		Executable = C:\Users\Justin\Handmade_Hero\build\win32_handmade.exe
+		Executable = C:\Users\Henry\Desktop\Justin_Temp\My_Handmade_Hero\build\win32_handmade.exe
 		RemoteMachine = ASUS-JUSTIN
-		StartingDirectory = C:\Users\Justin\Handmade_Hero\data
+		StartingDirectory = C:\Users\Henry\Desktop\Justin_Temp\My_Handmade_Hero\data
 		Environment = Default
 		LaunchingEngine = 00000000-0000-0000-0000-000000000000
 		UseLegacyDebugEngines = No
@@ -21,7 +21,7 @@ Global
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{6CC2382D-CFF6-41DA-9A72-E8ADC913BA28}.Release|x64.ActiveCfg = Release|x64
+		{6CC2382D-CFF6-41DA-9A72-E8ADC913BA28}.Release|x64.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

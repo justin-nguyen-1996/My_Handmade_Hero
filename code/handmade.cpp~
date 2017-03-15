@@ -298,8 +298,8 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 			if (controller->moveLeft.endedDown) { deltaPlayerX = -1.0f; }
 
 			// Scale the delta
-			deltaPlayerX *= 60.0f;
-			deltaPlayerY *= 60.0f;
+			deltaPlayerX *= 80.0f;
+			deltaPlayerY *= 80.0f;
 
 			// Put the player's new coordinates (old coordinates + input) in a temp value for testing
 			real32 newPlayerX = gameState->playerX + input->deltaTimeForFrame * deltaPlayerX;

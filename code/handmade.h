@@ -24,6 +24,26 @@ typedef struct tilemap {
 	uint32_t* tiles;
 } tilemap;
 
+typedef struct canonical_world_pos {
+	int32_t tileMapX; 
+	int32_t tileMapY; 
+	int32_t tileX;
+	int32_t tileY;
+
+	// tile-relative x & y
+	real32 x; 
+	real32 y;
+} canonical_world_pos;
+
+typedef struct raw_world_pos {
+	int32_t tileMapX; 
+	int32_t tileMapY; 
+ 
+	// tilemap-relative x & y
+	real32 x; 
+	real32 y;
+} raw_world_pos; 
+
 // Holds info on fixed tile map sizes and holds all of the tile maps
 typedef struct world {
 	// fixed tile map sizes
@@ -47,8 +67,8 @@ typedef struct world {
 typedef struct GameState {
 	int32_t playerTileMapX;
 	int32_t playerTileMapY;
-	real32 playerTileX;
-	real32 playerTileY;
+	real32 playerX;
+	real32 playerY;
 } GameState;
 
 /******************************************************************/
