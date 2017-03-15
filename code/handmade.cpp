@@ -339,7 +339,7 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 			if (tileIndex == 1) { tempColor = 1.0f; }
 			drawRectangle(imageBuffer, minX, minY, maxX, maxY, tempColor, tempColor, tempColor);
 		}
-	}
+	} 
 
 	// Obtain player coordinates 
 	real32 playerLeft = gameState->playerX - (playerWidth * 0.5f);
