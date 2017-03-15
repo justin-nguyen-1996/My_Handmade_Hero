@@ -1,3 +1,5 @@
 *.o
 *.VC.opendb
 *.hmi
+*~
+
