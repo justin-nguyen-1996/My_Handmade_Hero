@@ -25,24 +25,22 @@ typedef struct tilemap {
 } tilemap;
 
 typedef struct canonical_world_pos {
+	
+#if 1
 	int32_t tileMapX; 
 	int32_t tileMapY; 
 	int32_t tileX;
 	int32_t tileY;
-
-	// tile-relative x & y
-	real32 x; 
-	real32 y;
+	real32 tileRelX; 
+	real32 tileRelY;
+#else
+	uint32_t tileX;
+	uint32_t tileY;
+	real32 tileRelX; 
+	real32 tileRelY;
+#endif
+	
 } canonical_world_pos;
-
-typedef struct raw_world_pos {
-	int32_t tileMapX; 
-	int32_t tileMapY; 
- 
-	// tilemap-relative x & y
-	real32 x; 
-	real32 y;
-} raw_world_pos; 
 
 // Holds info on fixed tile map sizes and holds all of the tile maps
 typedef struct world {
@@ -65,12 +63,9 @@ typedef struct world {
 } world;
 
 // Holds info on where the player is (which tile map and which tile)
-typedef struct GameState {
-	int32_t playerTileMapX;
-	int32_t playerTileMapY;
-	real32 playerX;
-	real32 playerY;
-} GameState;
+typedef struct game_state {
+	canonical_world_pos playerPos;
+} game_state;
 
 /******************************************************************/
 /******** Services the platform provides to the game layer ********/

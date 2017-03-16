@@ -2,17 +2,17 @@
 #include "handmade.h"
 #include "handmade_intrinsics.h"
 
-static void drawRectangle(GameImageBuffer* buffer, 
-						  real32 realMinX, real32 realMinY, 
+static void drawRectangle(GameImageBuffer* buffer,
+						  real32 realMinX, real32 realMinY,
 						  real32 realMaxX, real32 realMaxY,
-						  real32 R, real32 G, real32 B) 
+						  real32 R, real32 G, real32 B)
 {
 	// Color calculation
-	uint32_t color = (roundReal32ToUInt32(R * 255.0f) << 16) 
-					 | (roundReal32ToUInt32(G * 255.0f) << 8) 
+	uint32_t color = (roundReal32ToUInt32(R * 255.0f) << 16)
+					 | (roundReal32ToUInt32(G * 255.0f) << 8)
 					 | (roundReal32ToUInt32(B * 255.0f) << 0);
-	
-	// Round input params 
+
+	// Round input params
 	int32_t minX = roundReal32ToInt32(realMinX);
 	int32_t minY = roundReal32ToInt32(realMinY);
 	int32_t maxX = roundReal32ToInt32(realMaxX);
@@ -23,11 +23,11 @@ static void drawRectangle(GameImageBuffer* buffer,
 	if (minY < 0) 			   { minY = 0; }
 	if (maxX > buffer->Width)  { maxX = buffer->Width; }
 	if (maxY > buffer->Height) { maxY = buffer->Height; }
-	
+
 	// Gets top left corner of player
-	uint8_t* row = (uint8_t*)buffer->BitmapMemory + minX*buffer->bytesPerPixel + minY*buffer->Pitch; 
-	
-	// Draw up to, but not including, the point (maxX, maxY)	
+	uint8_t* row = (uint8_t*)buffer->BitmapMemory + minX*buffer->bytesPerPixel + minY*buffer->Pitch;
+
+	// Draw up to, but not including, the point (maxX, maxY)
 	for (int y = minY; y < maxY; ++y) {
 		uint32_t* pixel = (uint32_t*) row; // cast so that we can increment by pixels when coloring
 		for (int x = minX; x < maxX; ++x) {
@@ -41,7 +41,7 @@ static void drawRectangle(GameImageBuffer* buffer,
 // {
 // 	uint8_t* row = (uint8_t*) buffer->BitmapMemory;
 // 	for (int y = 0; y < buffer->Height; ++y) {
-// 
+//
 // 		uint32_t* pixel = (uint32_t*) row;
 // 		for (int x = 0; x < buffer->Width; ++x) {
 // 			//   Memory:   BB GG RR XX
@@ -51,12 +51,12 @@ static void drawRectangle(GameImageBuffer* buffer,
 // 			uint8_t red;
 // 			*pixel++ = ((green << 8) | (blue));
 // 		}
-// 
+//
 // 		row += buffer->Pitch;
 // 	}
 // }
 
-static void GameOutputSound(GameState* gameState, GameSoundBuffer* SoundBuffer, int toneHertz) {
+static void GameOutputSound(game_state* gameState, GameSoundBuffer* SoundBuffer, int toneHertz) {
 	int16_t toneVolume = 3000;
 	int wavePeriod = SoundBuffer->samplesPerSecond / toneHertz;
 	int16_t* sampleOut = SoundBuffer->samples;
@@ -66,7 +66,7 @@ static void GameOutputSound(GameState* gameState, GameSoundBuffer* SoundBuffer, 
 #if 0
 		real32 sineValue = sinf(gameState->tSine);
 		int16_t sampleValue = (int16_t) (sineValue * toneVolume);
-#else   
+#else
 		int16_t sampleValue = 0;
 #endif
 
@@ -82,7 +82,7 @@ static void GameOutputSound(GameState* gameState, GameSoundBuffer* SoundBuffer, 
 inline tilemap* getTileMap(world* world, int tileMapX, int tileMapY) {
 	tilemap* tileMap = 0;
 	if (tileMapX >= 0  &&  tileMapX < world->numTileMapsX  && // make sure the tile map coordinates are valid
-		tileMapY >= 0  &&  tileMapY < world->numTileMapsY) 
+		tileMapY >= 0  &&  tileMapY < world->numTileMapsY)
 	{
 		int pitch = tileMapY * world->numTileMapsX;
 		tileMap = &(world->tileMaps[pitch + tileMapX]);
@@ -93,75 +93,62 @@ inline tilemap* getTileMap(world* world, int tileMapX, int tileMapY) {
 inline uint32_t getTileValue(world* world, tilemap* tileMap, int tileX, int tileY) {
 	assert(tileMap);
 	assert (tileX >= 0  &&  tileX < world->numTilesX  && // make sure the player is actually on the tile map
-		    tileY>= 0  &&  tileY < world->numTilesY) 
-		
+		    tileY>= 0  &&  tileY < world->numTilesY)
+
 	int pitch = tileY * world->numTilesX;
 	uint32_t tileVal = tileMap->tiles[pitch + tileX];
 	return tileVal;
 }
 
 static bool isTileMapPointEmpty(world* world, tilemap* tileMap, int32_t testTileX, int32_t testTileY) {
-	
+
 	bool isEmpty = false;
-	
+
 	if (tileMap) {
-		
+
 		if (testTileX >= 0  &&  testTileX < world->numTilesX  && // make sure the player is actually on the tile map
-			testTileY >= 0  &&  testTileY < world->numTilesY) 
+			testTileY >= 0  &&  testTileY < world->numTilesY)
 		{
 			uint32_t tileMapValue = getTileValue(world, tileMap, testTileX, testTileY);
 			isEmpty = (tileMapValue == 0); // empty points are considered to have a values of 0 in our tile map
 		}
 	}
-	
+
 	return isEmpty;
 }
 
-inline canonical_world_pos getCanonicalPosition(world* world, raw_world_pos* pos) {
-	// Struct holding our return value
-	canonical_world_pos res;
-	res.tileMapX = pos->tileMapX; 
-	res.tileMapY = pos->tileMapY; 
-	
-	// Map new location to a tile and tile-relative values
-	real32 x = pos->x - world->upperLeftX; // remove offsets and map into world space (instead of array space)
-	real32 y = pos->y - world->upperLeftY;
-	res.tileX = floorReal32ToInt32(x / world->tileSideInPixels);
-	res.tileY = floorReal32ToInt32(y / world->tileSideInPixels);
-	res.x = x - (res.tileX * world->tileSideInPixels);
-	res.y = y - (res.tileY * world->tileSideInPixels);
+inline void canonicalizeCoord(world* world, int32_t numTiles, int32_t* tileMap, int32_t* tile, real32* tileRel) {
 
-	assert(res.x >= 0);
-	assert(res.y >= 0);
-	assert(res.x < world->tileSideInPixels);
-	assert(res.y < world->tileSideInPixels);
+	// Account for moving into a different tile
+	int32_t offset = floorReal32ToInt32(*tileRel / world->tileSideInPixels); // if (greater than 1) --> moved off the tile to the right, vice-versa
+	*tile += offset;
+	*tileRel -= offset * world->tileSideInPixels;
+
+	assert(*tileRel >= 0);
+	assert(*tileRel < world->tileSideInPixels);
 
 	// Account for moving into a different tile map
-	if (res.tileX < 0) {
-		res.tileX += world->numTilesX;
-		res.tileMapX -= 1;
+	if (*tile < 0) {
+		*tile += numTiles;
+		*tileMap -= 1;
 	}
-	if (res.tileY < 0) {
-		res.tileY += world->numTilesY;
-		res.tileMapY -= 1;
+	if (*tile >= numTiles) {
+		*tile -= numTiles;
+		*tileMap += 1;
 	}
-	if (res.tileX >= world->numTilesX) {
-		res.tileX -= world->numTilesX;
-		res.tileMapX += 1;
-	}
-	if (res.tileY >= world->numTilesY) {
-		res.tileY -= world->numTilesY;
-		res.tileMapY += 1;
-	}
-	
+}
+
+inline canonical_world_pos reCanonicalizePosition(world* world, canonical_world_pos pos) {
+	canonical_world_pos res = pos;
+	canonicalizeCoord(world, world->numTilesX, &pos.tileMapX, &pos.tileX, &pos.tileRelX);
+	canonicalizeCoord(world, world->numTilesY, &pos.tileMapY, &pos.tileY, &pos.tileRelY);
 	return res;
 }
 
-static bool isWorldMapPointEmpty(world* world, raw_world_pos* rawPos) {
+static bool isWorldMapPointEmpty(world* world, canonical_world_pos* canPos) {
 	bool isEmpty = false;
-	canonical_world_pos canonicalPos = getCanonicalPosition(world, rawPos); // adjust for moving into a different tile map
-	tilemap* tileMap = getTileMap(world, canonicalPos.tileMapX, canonicalPos.tileMapY);
-	isEmpty = isTileMapPointEmpty(world, tileMap, canonicalPos.tileX, canonicalPos.tileY);
+	tilemap* tileMap = getTileMap(world, canPos->tileMapX, canPos->tileMapY);
+	isEmpty = isTileMapPointEmpty(world, tileMap, canPos->tileX, canPos->tileY);
 	return isEmpty;
 }
 
@@ -171,18 +158,24 @@ static bool isWorldMapPointEmpty(world* world, raw_world_pos* rawPos) {
 
 // static void gameUpdateAndRender(ThreadContext* threadContext, GameMemory* memory, GameInput* input, GameImageBuffer* imageBuffer)
 extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
-	
-	GameState* gameState = (GameState*) memory->permanentStorage;
+
+	game_state* gameState = (game_state*) memory->permanentStorage;
 
 	// Initialize the game state and memory
-	if (! memory->isInit) { 
-		gameState->playerX = 150;
-		gameState->playerY = 150;
-		memory->isInit = true; 
+	if (! memory->isInit) {
+
+		gameState->playerPos.tileMapX = 0;
+		gameState->playerPos.tileMapY = 0;
+		gameState->playerPos.tileX = 3;
+		gameState->playerPos.tileY = 3;
+		gameState->playerPos.tileRelX = 5.0f;
+		gameState->playerPos.tileRelY = 5.0f;
+
+		memory->isInit = true;
 	}
-		
+
 	// Tile map
-	uint32_t tiles00[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] = 
+	uint32_t tiles00[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] =
     {
         {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1, 1},
         {1, 1, 0, 0,  0, 1, 0, 0,  0, 0, 0, 0,  0, 1, 0, 0, 1},
@@ -194,7 +187,7 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
         {1, 1, 1, 1,  1, 0, 0, 0,  0, 0, 0, 0,  0, 1, 0, 0, 1},
         {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1, 1},
     };
-    
+
     uint32_t tiles01[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] =
     {
         {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1, 1},
@@ -207,7 +200,7 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
         {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
         {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1, 1},
     };
-    
+
     uint32_t tiles10[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] =
     {
         {1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1, 1},
@@ -220,7 +213,7 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
         {1, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0, 1},
         {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1, 1},
     };
-	
+
 	uint32_t tiles11[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] =
     {
         {1, 1, 1, 1,  1, 1, 1, 1,  0, 1, 1, 1,  1, 1, 1, 1, 1},
@@ -236,13 +229,13 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 
 	// Our array of tile maps
 	tilemap tileMaps[2][2];
-	
+
 	// Pointing our tilemap structs to our array of numbers above
 	tileMaps[0][0].tiles = (uint32_t*) tiles00;
 	tileMaps[0][1].tiles = (uint32_t*) tiles10;
 	tileMaps[1][0].tiles = (uint32_t*) tiles01;
 	tileMaps[1][1].tiles = (uint32_t*) tiles11;
-	
+
 	// World struct
 	world world;
 	world.tileSideInMeters = 1.4f;
@@ -258,19 +251,19 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	world.tileMaps = (tilemap*) tileMaps;
 
 	// Current tile map
-	tilemap* tileMap = getTileMap(&world, gameState->playerTileMapX, gameState->playerTileMapY);
+	tilemap* tileMap = getTileMap(&world, gameState->playerPos.tileMapX, gameState->playerPos.tileMapY);
 	assert(tileMap);
-	
+
 	// Obtain player dimensions
 	real32 playerWidth = 0.75f * world.tileSideInPixels;
 	real32 playerHeight = (real32) world.tileSideInPixels;
-	
+
 	// Handle game input
 	for (int controllerIndex = 0; controllerIndex < arrayCount(input->controllers); ++controllerIndex) {
-		
+
 		GameControllerInput* controller = getController(input, controllerIndex);
 		if (controller->isAnalog) { // controller input
-			
+
 		} else { // keyboard input
 
 			// Figure out which direction the player moved
@@ -285,32 +278,28 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 			deltaPlayerX *= 60.0f;
 			deltaPlayerY *= 60.0f;
 
-			// Put the player's new coordinates (old coordinates + input) in a temp value for testing
-			real32 newPlayerX = gameState->playerX + input->deltaTimeForFrame * deltaPlayerX;
-			real32 newPlayerY = gameState->playerY + input->deltaTimeForFrame * deltaPlayerY;
+			// Struct holding our player's new position
+			canonical_world_pos newplayerPos = gameState->playerPos;
+			newplayerPos.tileRelX = gameState->playerPos.tileRelX + (input->deltaTimeForFrame * deltaPlayerX);
+			newplayerPos.tileRelY = gameState->playerPos.tileRelY + (input->deltaTimeForFrame * deltaPlayerY);
+			newplayerPos = reCanonicalizePosition(&world, newplayerPos);
 
-			// Struct holding our player's position
-			raw_world_pos playerPos = {gameState->playerTileMapX, gameState->playerTileMapY, newPlayerX, newPlayerY};
-			raw_world_pos playerLeftPos = playerPos; playerLeftPos.x -= 0.5f*playerWidth;
-			raw_world_pos playerRightPos = playerPos; playerRightPos.x += 0.5f*playerWidth;
+			canonical_world_pos playerLeftPos = gameState->playerPos; playerLeftPos.tileRelX -= 0.5f*playerWidth; reCanonicalizePosition(&world, playerLeftPos);
+			canonical_world_pos playerRightPos = gameState->playerPos; playerRightPos.tileRelX += 0.5f*playerWidth; reCanonicalizePosition(&world, playerRightPos);
 
 			// Only change actual location of the player if given valid coordinates
-			if ((isWorldMapPointEmpty(&world, &playerPos)) &&
+			if ((isWorldMapPointEmpty(&world, &gameState->playerPos)) &&
 				(isWorldMapPointEmpty(&world, &playerLeftPos)) &&
 				(isWorldMapPointEmpty(&world, &playerRightPos)))
 			{
-				canonical_world_pos canPos = getCanonicalPosition(&world, &playerPos);
-				gameState->playerTileMapX = canPos.tileMapX;
-				gameState->playerTileMapY = canPos.tileMapY;
-				gameState->playerX = world.upperLeftX + canPos.tileX*world.tileSideInPixels + canPos.x; // adjust for tile-relative x & y
-				gameState->playerY = world.upperLeftY + canPos.tileY*world.tileSideInPixels + canPos.y; 
+				gameState->playerPos = newplayerPos;
 			}
 		}
 	}
 
 	// White background
     drawRectangle(imageBuffer, 0.0f, 0.0f, (real32)imageBuffer->Width, (real32)imageBuffer->Height, 1.0f, 1.0f, 1.0f);
-	
+
 	// Display the tile map (get tile ID, get rectangle bounds, call drawRect)
 	for (int y = 0; y < 9; ++y) {
 		for (int x = 0; x < 17; ++x) {
@@ -323,23 +312,25 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 			if (tileIndex == 1) { tempColor = 1.0f; }
 			drawRectangle(imageBuffer, minX, minY, maxX, maxY, tempColor, tempColor, tempColor);
 		}
-	} 
+	}
 
-	// Obtain player coordinates 
-	real32 playerLeft = gameState->playerX - (playerWidth * 0.5f); // playerX is the middle of the player
-	real32 playerTop = gameState->playerY - playerHeight; // playerY is the bottom of the player
-	
+	// Obtain player coordinates
+	real32 playerLeft = world.upperLeftX + (gameState->playerPos.tileX*world.tileSideInPixels)
+						+ gameState->playerPos.tileRelX - (playerWidth * 0.5f);
+	real32 playerTop = world.upperLeftY + (gameState->playerPos.tileY*world.tileSideInPixels)
+						+ gameState->playerPos.tileRelY - playerHeight; 
+
 	// Obtain player color
 	real32 playerR = 1.0;
 	real32 playerG = 1.0;
 	real32 playerB = 0.0;
 
 	// Draw the player
-	drawRectangle(imageBuffer, playerLeft, playerTop, playerLeft + playerWidth, playerTop + playerHeight, playerR, playerG, playerB); 
+	drawRectangle(imageBuffer, playerLeft, playerTop, playerLeft + playerWidth, playerTop + playerHeight, playerR, playerG, playerB);
 }
 
 extern "C" GAME_GET_SOUND_SAMPLES(gameGetSoundSamples) {
-	GameState* gameState = (GameState*) memory->permanentStorage;
+	game_state* gameState = (game_state*) memory->permanentStorage;
 	GameOutputSound(gameState, soundBuffer, 400);
 }
 
