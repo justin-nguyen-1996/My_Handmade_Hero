@@ -117,15 +117,15 @@ static bool isTileMapPointEmpty(world* world, tilemap* tileMap, int32_t testTile
 	return isEmpty;
 }
 
-inline void canonicalizeCoord(world* world, int32_t numTiles, int32_t* tileMap, int32_t* tile, real32* tileRel) {
+inline void recanonicalizeCoord(world* world, int32_t numTiles, int32_t* tileMap, int32_t* tile, real32* tileRel) {
 
 	// Account for moving into a different tile
-	int32_t offset = floorReal32ToInt32(*tileRel / world->tileSideInPixels); // if (greater than 1) --> moved off the tile to the right, vice-versa
+	int32_t offset = floorReal32ToInt32(*tileRel / world->tileSideInMeters); // if (greater than 1) --> moved off the tile to the right, vice-versa
 	*tile += offset;
-	*tileRel -= offset * world->tileSideInPixels;
+	*tileRel -= offset * world->tileSideInMeters;
 
 	assert(*tileRel >= 0);
-	assert(*tileRel < world->tileSideInPixels);
+	assert(*tileRel < world->tileSideInMeters);
 
 	// Account for moving into a different tile map
 	if (*tile < 0) {
@@ -138,10 +138,10 @@ inline void canonicalizeCoord(world* world, int32_t numTiles, int32_t* tileMap, 
 	}
 }
 
-inline canonical_world_pos reCanonicalizePosition(world* world, canonical_world_pos pos) {
+inline canonical_world_pos recanonicalizePosition(world* world, canonical_world_pos pos) {
 	canonical_world_pos res = pos;
-	canonicalizeCoord(world, world->numTilesX, &pos.tileMapX, &pos.tileX, &pos.tileRelX);
-	canonicalizeCoord(world, world->numTilesY, &pos.tileMapY, &pos.tileY, &pos.tileRelY);
+	recanonicalizeCoord(world, world->numTilesX, &res.tileMapX, &res.tileX, &res.tileRelX);
+	recanonicalizeCoord(world, world->numTilesY, &res.tileMapY, &res.tileY, &res.tileRelY);
 	return res;
 }
 
@@ -238,16 +238,15 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 
 	// World struct
 	world world;
-	world.tileSideInMeters = 1.4f;
 	world.tileSideInPixels = 60;
+	world.tileSideInMeters = 1.4f;
+	world.metersToPixels = world.tileSideInMeters / world.tileSideInPixels;
 	world.numTileMapsX = 2;
 	world.numTileMapsY = 2;
 	world.numTilesX = TILE_MAP_SIZE_X;
 	world.numTilesY = TILE_MAP_SIZE_Y;
-	world.upperLeftX = -(real32)world.tileSideInPixels;
+	world.upperLeftX = -(real32)world.tileSideInPixels / 2;
 	world.upperLeftY = 0;
-	world.tileSideInPixels = 60;
-	world.tileSideInPixels = 60;
 	world.tileMaps = (tilemap*) tileMaps;
 
 	// Current tile map
@@ -255,8 +254,8 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	assert(tileMap);
 
 	// Obtain player dimensions
-	real32 playerWidth = 0.75f * world.tileSideInPixels;
-	real32 playerHeight = (real32) world.tileSideInPixels;
+	real32 playerHeight = 1.4f;
+	real32 playerWidth = 0.75f * playerHeight;
 
 	// Handle game input
 	for (int controllerIndex = 0; controllerIndex < arrayCount(input->controllers); ++controllerIndex) {
@@ -275,24 +274,27 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 			if (controller->moveLeft.endedDown) { deltaPlayerX = -1.0f; }
 
 			// Scale the delta
-			deltaPlayerX *= 60.0f;
-			deltaPlayerY *= 60.0f;
+			deltaPlayerX *= 10.0f;
+			deltaPlayerY *= 10.0f;
 
-			// Struct holding our player's new position
-			canonical_world_pos newplayerPos = gameState->playerPos;
-			newplayerPos.tileRelX = gameState->playerPos.tileRelX + (input->deltaTimeForFrame * deltaPlayerX);
-			newplayerPos.tileRelY = gameState->playerPos.tileRelY + (input->deltaTimeForFrame * deltaPlayerY);
-			newplayerPos = reCanonicalizePosition(&world, newplayerPos);
-
-			canonical_world_pos playerLeftPos = gameState->playerPos; playerLeftPos.tileRelX -= 0.5f*playerWidth; reCanonicalizePosition(&world, playerLeftPos);
-			canonical_world_pos playerRightPos = gameState->playerPos; playerRightPos.tileRelX += 0.5f*playerWidth; reCanonicalizePosition(&world, playerRightPos);
+			// Re-adjust player's position
+			canonical_world_pos newPlayerPos = gameState->playerPos; // middle
+				newPlayerPos.tileRelX += input->deltaTimeForFrame * deltaPlayerX;
+				newPlayerPos.tileRelY += input->deltaTimeForFrame * deltaPlayerY;
+				newPlayerPos = recanonicalizePosition(&world, newPlayerPos);
+			canonical_world_pos playerLeftPos = newPlayerPos;        // left
+				playerLeftPos.tileRelX -= 0.5f*playerWidth; 
+				playerLeftPos = recanonicalizePosition(&world, playerLeftPos);
+			canonical_world_pos playerRightPos = newPlayerPos;       // right
+				playerRightPos.tileRelX += 0.5f*playerWidth; 
+				playerRightPos = recanonicalizePosition(&world, playerRightPos);
 
 			// Only change actual location of the player if given valid coordinates
-			if ((isWorldMapPointEmpty(&world, &gameState->playerPos)) &&
+			if ((isWorldMapPointEmpty(&world, &newPlayerPos)) &&
 				(isWorldMapPointEmpty(&world, &playerLeftPos)) &&
 				(isWorldMapPointEmpty(&world, &playerRightPos)))
 			{
-				gameState->playerPos = newplayerPos;
+				gameState->playerPos = newPlayerPos;
 			}
 		}
 	}
@@ -316,9 +318,9 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 
 	// Obtain player coordinates
 	real32 playerLeft = world.upperLeftX + (gameState->playerPos.tileX*world.tileSideInPixels)
-						+ gameState->playerPos.tileRelX - (playerWidth * 0.5f);
+						+ (world.metersToPixels*gameState->playerPos.tileRelX) - (playerWidth * 0.5f);
 	real32 playerTop = world.upperLeftY + (gameState->playerPos.tileY*world.tileSideInPixels)
-						+ gameState->playerPos.tileRelY - playerHeight; 
+						+ (world.metersToPixels*gameState->playerPos.tileRelY) - playerHeight; 
 
 	// Obtain player color
 	real32 playerR = 1.0;

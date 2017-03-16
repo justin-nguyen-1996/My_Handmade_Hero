@@ -48,6 +48,7 @@ typedef struct world {
 	// fixed tile map sizes
 	real32 tileSideInMeters;
 	int32_t tileSideInPixels;
+	real32 metersToPixels;
 	real32 upperLeftX;
 	real32 upperLeftY;
 	int32_t numTilesX;
