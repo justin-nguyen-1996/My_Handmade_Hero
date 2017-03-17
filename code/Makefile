@@ -1,2 +1,2 @@
 all:
-	build.bat
+	./build.bat

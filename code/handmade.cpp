@@ -125,7 +125,7 @@ inline void recanonicalizeCoord(world* world, int32_t numTiles, int32_t* tileMap
 	*tileRel -= offset * world->tileSideInMeters;
 
 	assert(*tileRel >= 0);
-	assert(*tileRel < world->tileSideInMeters);
+	assert(*tileRel <= world->tileSideInMeters);
 
 	// Account for moving into a different tile map
 	if (*tile < 0) {
@@ -138,14 +138,14 @@ inline void recanonicalizeCoord(world* world, int32_t numTiles, int32_t* tileMap
 	}
 }
 
-inline canonical_world_pos recanonicalizePosition(world* world, canonical_world_pos pos) {
-	canonical_world_pos res = pos;
+inline world_pos recanonicalizePosition(world* world, world_pos pos) {
+	world_pos res = pos;
 	recanonicalizeCoord(world, world->numTilesX, &res.tileMapX, &res.tileX, &res.tileRelX);
 	recanonicalizeCoord(world, world->numTilesY, &res.tileMapY, &res.tileY, &res.tileRelY);
 	return res;
 }
 
-static bool isWorldMapPointEmpty(world* world, canonical_world_pos* canPos) {
+static bool isWorldMapPointEmpty(world* world, world_pos* canPos) {
 	bool isEmpty = false;
 	tilemap* tileMap = getTileMap(world, canPos->tileMapX, canPos->tileMapY);
 	isEmpty = isTileMapPointEmpty(world, tileMap, canPos->tileX, canPos->tileY);
@@ -240,13 +240,13 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	world world;
 	world.tileSideInPixels = 60;
 	world.tileSideInMeters = 1.4f;
-	world.metersToPixels = world.tileSideInMeters / world.tileSideInPixels;
+	world.metersToPixels = world.tileSideInPixels / world.tileSideInMeters;
 	world.numTileMapsX = 2;
 	world.numTileMapsY = 2;
 	world.numTilesX = TILE_MAP_SIZE_X;
 	world.numTilesY = TILE_MAP_SIZE_Y;
-	world.upperLeftX = -(real32)world.tileSideInPixels / 2;
-	world.upperLeftY = 0;
+	world.lowerLeftX = -(real32)world.tileSideInPixels / 2;
+	world.lowerLeftY = (real32)imageBuffer->Height;
 	world.tileMaps = (tilemap*) tileMaps;
 
 	// Current tile map
@@ -268,24 +268,24 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 			// Figure out which direction the player moved
 			real32 deltaPlayerX = 0.0f;
 			real32 deltaPlayerY = 0.0f;
-			if (controller->moveUp.endedDown) { deltaPlayerY = -1.0f; }
-			if (controller->moveDown.endedDown) { deltaPlayerY = 1.0f; }
-			if (controller->moveRight.endedDown) { deltaPlayerX = 1.0f; }
-			if (controller->moveLeft.endedDown) { deltaPlayerX = -1.0f; }
+			if (controller->moveUp.endedDown)    { deltaPlayerY =  1.0f; }
+			if (controller->moveDown.endedDown)  { deltaPlayerY = -1.0f; }
+			if (controller->moveRight.endedDown) { deltaPlayerX =  1.0f; }
+			if (controller->moveLeft.endedDown)  { deltaPlayerX = -1.0f; }
 
 			// Scale the delta
-			deltaPlayerX *= 10.0f;
-			deltaPlayerY *= 10.0f;
+			deltaPlayerX *= 1.0f;
+			deltaPlayerY *= 1.0f;
 
 			// Re-adjust player's position
-			canonical_world_pos newPlayerPos = gameState->playerPos; // middle
+			world_pos newPlayerPos = gameState->playerPos; // middle
 				newPlayerPos.tileRelX += input->deltaTimeForFrame * deltaPlayerX;
 				newPlayerPos.tileRelY += input->deltaTimeForFrame * deltaPlayerY;
 				newPlayerPos = recanonicalizePosition(&world, newPlayerPos);
-			canonical_world_pos playerLeftPos = newPlayerPos;        // left
+			world_pos playerLeftPos = newPlayerPos;        // left
 				playerLeftPos.tileRelX -= 0.5f*playerWidth; 
 				playerLeftPos = recanonicalizePosition(&world, playerLeftPos);
-			canonical_world_pos playerRightPos = newPlayerPos;       // right
+			world_pos playerRightPos = newPlayerPos;       // right
 				playerRightPos.tileRelX += 0.5f*playerWidth; 
 				playerRightPos = recanonicalizePosition(&world, playerRightPos);
 
@@ -306,21 +306,22 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	for (int y = 0; y < 9; ++y) {
 		for (int x = 0; x < 17; ++x) {
 			int tileIndex = getTileValue(&world, tileMap, x, y);
-			real32 minX = world.upperLeftX + (world.tileSideInPixels * (real32)x);
-			real32 minY = world.upperLeftY + (world.tileSideInPixels * (real32)y);
+			real32 minX = world.lowerLeftX + (world.tileSideInPixels * (real32)x);
+			real32 minY = world.lowerLeftY - (world.tileSideInPixels * (real32)y);
 			real32 maxX = minX + world.tileSideInPixels;
-			real32 maxY = minY + world.tileSideInPixels;
+			real32 maxY = minY - world.tileSideInPixels;
 			real32 tempColor = 0.5f;
 			if (tileIndex == 1) { tempColor = 1.0f; }
-			drawRectangle(imageBuffer, minX, minY, maxX, maxY, tempColor, tempColor, tempColor);
+			if (y == gameState->playerPos.tileY  &&  x == gameState->playerPos.tileX) { tempColor = 0.0f; }
+			drawRectangle(imageBuffer, minX, maxY, maxX, minY, tempColor, tempColor, tempColor);
 		}
 	}
 
 	// Obtain player coordinates
-	real32 playerLeft = world.upperLeftX + (gameState->playerPos.tileX*world.tileSideInPixels)
-						+ (world.metersToPixels*gameState->playerPos.tileRelX) - (playerWidth * 0.5f);
-	real32 playerTop = world.upperLeftY + (gameState->playerPos.tileY*world.tileSideInPixels)
-						+ (world.metersToPixels*gameState->playerPos.tileRelY) - playerHeight; 
+	real32 playerLeft = world.lowerLeftX + (gameState->playerPos.tileX*world.tileSideInPixels)
+						+ (world.metersToPixels*gameState->playerPos.tileRelX) - (playerWidth*0.5f*world.metersToPixels);
+	real32 playerTop = world.lowerLeftY - (gameState->playerPos.tileY*world.tileSideInPixels)
+						- (world.metersToPixels*gameState->playerPos.tileRelY) - (playerHeight*world.metersToPixels); 
 
 	// Obtain player color
 	real32 playerR = 1.0;
@@ -328,7 +329,12 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	real32 playerB = 0.0;
 
 	// Draw the player
-	drawRectangle(imageBuffer, playerLeft, playerTop, playerLeft + playerWidth, playerTop + playerHeight, playerR, playerG, playerB);
+	drawRectangle(imageBuffer, 
+				  playerLeft, 
+				  playerTop, 
+				  playerLeft + playerWidth*world.metersToPixels, 
+				  playerTop + playerHeight*world.metersToPixels, 
+				  playerR, playerG, playerB);
 }
 
 extern "C" GAME_GET_SOUND_SAMPLES(gameGetSoundSamples) {
