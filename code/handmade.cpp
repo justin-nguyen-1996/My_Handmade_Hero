@@ -159,21 +159,6 @@ static bool isWorldMapPointEmpty(world* world, world_pos* canPos) {
 // static void gameUpdateAndRender(ThreadContext* threadContext, GameMemory* memory, GameInput* input, GameImageBuffer* imageBuffer)
 extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 
-	game_state* gameState = (game_state*) memory->permanentStorage;
-
-	// Initialize the game state and memory
-	if (! memory->isInit) {
-
-		gameState->playerPos.tileMapX = 0;
-		gameState->playerPos.tileMapY = 0;
-		gameState->playerPos.tileX = 3;
-		gameState->playerPos.tileY = 3;
-		gameState->playerPos.tileRelX = 5.0f;
-		gameState->playerPos.tileRelY = 5.0f;
-
-		memory->isInit = true;
-	}
-
 	// Tile map
 	uint32_t tiles00[TILE_MAP_SIZE_Y][TILE_MAP_SIZE_X] =
     {
@@ -248,6 +233,18 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 	world.lowerLeftX = -(real32)world.tileSideInPixels / 2;
 	world.lowerLeftY = (real32)imageBuffer->Height;
 	world.tileMaps = (tilemap*) tileMaps;
+
+	// Initialize the game state and memory
+	game_state* gameState = (game_state*) memory->permanentStorage;
+	if (! memory->isInit) {
+		gameState->playerPos.tileMapX = 0;
+		gameState->playerPos.tileMapY = 0;
+		gameState->playerPos.tileX = 3;
+		gameState->playerPos.tileY = 3;
+		gameState->playerPos.tileRelX = 5.0f;
+		gameState->playerPos.tileRelY = 5.0f;
+		memory->isInit = true;
+	}
 
 	// Current tile map
 	tilemap* tileMap = getTileMap(&world, gameState->playerPos.tileMapX, gameState->playerPos.tileMapY);

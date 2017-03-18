@@ -21,7 +21,7 @@ Global
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{6CC2382D-CFF6-41DA-9A72-E8ADC913BA28}.Release|x64.ActiveCfg = Release
+		{6CC2382D-CFF6-41DA-9A72-E8ADC913BA28}.Release|x64.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

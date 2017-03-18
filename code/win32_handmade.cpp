@@ -949,13 +949,6 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                             if (unwrappedWriteCursor < playCursor) { unwrappedWriteCursor += soundInfo.secondaryBufferSize; }
                             audioLatencyBytes = unwrappedWriteCursor - playCursor;
                             audioLatencySeconds = (real32)audioLatencyBytes / (real32)soundInfo.bytesPerSample / (real32)soundInfo.samplesPerSecond;
-
-                            // 						char TextBuffer[256];
-                            //                         _snprintf_s(TextBuffer, sizeof(TextBuffer),
-                            //                                     "LPC:%u BTL:%u TC:%u BTW:%u - PC:%u WC:%u\n",
-                            //                                     LastPlayCursor, ByteToLock, TargetCursor, BytesToWrite,
-                            //                                     PlayCursor, WriteCursor);
-                            //                         OutputDebugStringA(TextBuffer);
 #endif
                             Win32_FillSoundBuffer(&soundInfo, byteToLock, bytesToWrite, &soundBuffer);
                         } else {
@@ -984,13 +977,18 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdS
                             }
                         }
 
-                        flipWallClock = Win32_getWallClock();
+                        // Switch the counters
+                        LARGE_INTEGER EndCounter = Win32_getWallClock();
+                        real32 MSPerFrame = 1000.0f*Win32_getSecondsElapsed(beginCounter, EndCounter);                    
+                        beginCounter = EndCounter;
 
                         // Use the Windows platform to display our buffer
                         win32_WinDim Dimension = Win32_GetWinDim(WindowHandle);
                         HDC DeviceContext = GetDC(WindowHandle);
                         Win32_DisplayBuffer(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
                         ReleaseDC(WindowHandle, DeviceContext);
+
+                        flipWallClock = Win32_getWallClock();
 
 #if HANDMADE_INTERNAL
                         if (SecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor) == DS_OK) {
