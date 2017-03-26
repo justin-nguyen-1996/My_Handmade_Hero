@@ -1,0 +1,236 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+BitmapInfo	win32_handmade.h	/^	BITMAPINFO BitmapInfo;$/;"	m	struct:win32_Buffer
+BitmapMemory	handmade_platform.h	/^	void* BitmapMemory;$/;"	m	struct:GameImageBuffer
+BitmapMemory	win32_handmade.h	/^	void* BitmapMemory;$/;"	m	struct:win32_Buffer
+BytesPerPixel	win32_handmade.h	/^	int BytesPerPixel;$/;"	m	struct:win32_Buffer
+DEBUG_PLATFORM_FREE_FILE_MEMORY	handmade_platform.h	39;"	d
+DEBUG_PLATFORM_FREE_FILE_MEMORY	win32_handmade.cpp	/^DEBUG_PLATFORM_FREE_FILE_MEMORY(DEBUG_Platform_FreeFileMemory) {$/;"	f
+DEBUG_PLATFORM_READ_ENTIRE_FILE	handmade_platform.h	42;"	d
+DEBUG_PLATFORM_READ_ENTIRE_FILE	win32_handmade.cpp	/^DEBUG_PLATFORM_READ_ENTIRE_FILE(DEBUG_Platform_ReadEntireFile) {$/;"	f
+DEBUG_PLATFORM_WRITE_ENTIRE_FILE	handmade_platform.h	45;"	d
+DEBUG_PLATFORM_WRITE_ENTIRE_FILE	win32_handmade.cpp	/^DEBUG_PLATFORM_WRITE_ENTIRE_FILE(DEBUG_Platform_WriteEntireFile) {$/;"	f
+DEBUG_Platform_FreeFileMemory	handmade_platform.h	/^	debug_platform_free_file_memory* DEBUG_Platform_FreeFileMemory;$/;"	m	struct:GameMemory
+DEBUG_Platform_ReadEntireFile	handmade_platform.h	/^	debug_platform_read_entire_file* DEBUG_Platform_ReadEntireFile;$/;"	m	struct:GameMemory
+DEBUG_Platform_WriteEntireFile	handmade_platform.h	/^	debug_platform_write_entire_file* DEBUG_Platform_WriteEntireFile;$/;"	m	struct:GameMemory
+DIRECT_SOUND_CREATE	win32_handmade.cpp	45;"	d	file:
+DebugReadFile	handmade_platform.h	/^typedef struct DebugReadFile {$/;"	s
+DebugReadFile	handmade_platform.h	/^} DebugReadFile;$/;"	t	typeref:struct:DebugReadFile
+DllLastWriteTime	win32_handmade.h	/^	FILETIME DllLastWriteTime;$/;"	m	struct:win32_GameCode
+GAME_GET_SOUND_SAMPLES	handmade.cpp	/^extern "C" GAME_GET_SOUND_SAMPLES(gameGetSoundSamples) {$/;"	f
+GAME_GET_SOUND_SAMPLES	handmade_platform.h	128;"	d
+GAME_UPDATE_AND_RENDER	handmade.cpp	/^extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {$/;"	f
+GAME_UPDATE_AND_RENDER	handmade_platform.h	125;"	d
+GameButtonState	handmade_platform.h	/^typedef struct GameButtonState {$/;"	s
+GameButtonState	handmade_platform.h	/^} GameButtonState;$/;"	t	typeref:struct:GameButtonState
+GameControllerInput	handmade_platform.h	/^typedef struct GameControllerInput {$/;"	s
+GameControllerInput	handmade_platform.h	/^} GameControllerInput;$/;"	t	typeref:struct:GameControllerInput
+GameImageBuffer	handmade_platform.h	/^typedef struct GameImageBuffer {$/;"	s
+GameImageBuffer	handmade_platform.h	/^} GameImageBuffer;$/;"	t	typeref:struct:GameImageBuffer
+GameInput	handmade_platform.h	/^typedef struct GameInput {$/;"	s
+GameInput	handmade_platform.h	/^} GameInput;$/;"	t	typeref:struct:GameInput
+GameMemory	handmade_platform.h	/^typedef struct GameMemory {$/;"	s
+GameMemory	handmade_platform.h	/^} GameMemory;$/;"	t	typeref:struct:GameMemory
+GameOutputSound	handmade.cpp	/^static void GameOutputSound(game_state* gameState, GameSoundBuffer* SoundBuffer, int toneHertz) {$/;"	f	file:
+GameSoundBuffer	handmade_platform.h	/^typedef struct GameSoundBuffer {$/;"	s
+GameSoundBuffer	handmade_platform.h	/^} GameSoundBuffer;$/;"	t	typeref:struct:GameSoundBuffer
+Gigabytes	handmade.h	20;"	d
+GlobalBackBuffer	win32_handmade.cpp	/^static win32_Buffer GlobalBackBuffer;$/;"	v	file:
+HANDMADE_H	handmade.h	2;"	d
+HANDMADE_PLATFORM_H	handmade_platform.h	2;"	d
+Height	handmade_platform.h	/^	int Height;$/;"	m	struct:GameImageBuffer
+Height	win32_handmade.h	/^	int Height;$/;"	m	struct:win32_Buffer
+Height	win32_handmade.h	/^	int Height;$/;"	m	struct:win32_WinDim
+Kilobytes	handmade.h	18;"	d
+Megabytes	handmade.h	19;"	d
+PI	handmade.h	14;"	d
+PI	win32_handmade.cpp	3;"	d	file:
+PerformanceFreq	win32_handmade.cpp	/^static int64_t PerformanceFreq;$/;"	v	file:
+Pitch	handmade_platform.h	/^	int Pitch;$/;"	m	struct:GameImageBuffer
+Pitch	win32_handmade.h	/^	int Pitch;$/;"	m	struct:win32_Buffer
+Running	win32_handmade.cpp	/^static bool Running;$/;"	v	file:
+SecondaryBuffer	win32_handmade.cpp	/^static LPDIRECTSOUNDBUFFER SecondaryBuffer;$/;"	v	file:
+TILE_MAP_SIZE_X	handmade.cpp	155;"	d	file:
+TILE_MAP_SIZE_Y	handmade.cpp	157;"	d	file:
+Terabytes	handmade.h	21;"	d
+ThreadContext	handmade_platform.h	/^typedef struct ThreadContext {$/;"	s
+ThreadContext	handmade_platform.h	/^} ThreadContext;$/;"	t	typeref:struct:ThreadContext
+WIN32_STATE_FILE_NAME_COUNT	win32_handmade.h	46;"	d
+Width	handmade_platform.h	/^	int Width;$/;"	m	struct:GameImageBuffer
+Width	win32_handmade.h	/^	int Width;$/;"	m	struct:win32_Buffer
+Width	win32_handmade.h	/^	int Width;$/;"	m	struct:win32_WinDim
+Win32_BeginPlayBackInput	win32_handmade.cpp	/^static void Win32_BeginPlayBackInput(win32_state* state, int inputPlayingIndex) {$/;"	f	file:
+Win32_BeginRecordingInput	win32_handmade.cpp	/^static void Win32_BeginRecordingInput(win32_state* state, int inputRecordingIndex) {$/;"	f	file:
+Win32_ClearBuffer	win32_handmade.cpp	/^Win32_ClearBuffer(win32_SoundInfo* soundBuffer) {$/;"	f	file:
+Win32_DisplayBuffer	win32_handmade.cpp	/^static void Win32_DisplayBuffer(win32_Buffer* buffer, HDC DeviceContext, int WinWidth, int WinHeight)$/;"	f	file:
+Win32_EndPlayBackInput	win32_handmade.cpp	/^static void Win32_EndPlayBackInput(win32_state* state) {$/;"	f	file:
+Win32_EndRecordingInput	win32_handmade.cpp	/^static void Win32_EndRecordingInput(win32_state* state) {$/;"	f	file:
+Win32_FillSoundBuffer	win32_handmade.cpp	/^Win32_FillSoundBuffer(win32_SoundInfo* soundInfo, DWORD byteToLock, DWORD bytesToWrite, GameSoundBuffer* soundBuffer) {$/;"	f	file:
+Win32_GetWinDim	win32_handmade.cpp	/^win32_WinDim Win32_GetWinDim(HWND window) {$/;"	f
+Win32_InitDirectSound	win32_handmade.cpp	/^Win32_InitDirectSound(HWND Window, int32_t SamplesPerSecond, int32_t BufferSize) {$/;"	f	file:
+Win32_LoadXInput	win32_handmade.cpp	/^static void Win32_LoadXInput() {$/;"	f	file:
+Win32_PlayBackInput	win32_handmade.cpp	/^static void Win32_PlayBackInput(win32_state* state, GameInput* newInput) {$/;"	f	file:
+Win32_ProcessButton	win32_handmade.cpp	/^static void Win32_ProcessButton(DWORD XInputButtonState, GameButtonState* oldState, DWORD buttonBit, GameButtonState* newState) {$/;"	f	file:
+Win32_ProcessKeyboard	win32_handmade.cpp	/^static void Win32_ProcessKeyboard(GameButtonState* newState, bool isDown) {$/;"	f	file:
+Win32_ProcessPendingMessages	win32_handmade.cpp	/^static void Win32_ProcessPendingMessages(win32_state* Win32State, GameControllerInput* keyboardController) {$/;"	f	file:
+Win32_ProcessXInputStickPos	win32_handmade.cpp	/^static real32 Win32_ProcessXInputStickPos(SHORT val, SHORT deadZoneThreshold) {$/;"	f	file:
+Win32_RecordInput	win32_handmade.cpp	/^static void Win32_RecordInput(win32_state* state, GameInput* newInput) {$/;"	f	file:
+Win32_ResizeDibSection	win32_handmade.cpp	/^static void Win32_ResizeDibSection(win32_Buffer* buffer, int Width, int Height)$/;"	f	file:
+Win32_WindowProc	win32_handmade.cpp	/^LRESULT CALLBACK Win32_WindowProc(HWND hwnd, UINT Msg, WPARAM wParam, LPARAM lParam)$/;"	f
+Win32_buildExeFileNamePath	win32_handmade.cpp	/^static void Win32_buildExeFileNamePath(win32_state* state, char* fileName, int destCount, char* dest) {$/;"	f	file:
+Win32_getExeFileName	win32_handmade.cpp	/^static void Win32_getExeFileName(win32_state* state) {$/;"	f	file:
+Win32_getInputFileLocation	win32_handmade.cpp	/^static void Win32_getInputFileLocation(win32_state* state, bool inputStream, int slotIndex, int destCount, char* dest) {$/;"	f	file:
+Win32_getLastWriteTime	win32_handmade.cpp	/^inline FILETIME Win32_getLastWriteTime(char* fileName) {$/;"	f
+Win32_getReplayBuffer	win32_handmade.cpp	/^static win32_ReplayBuffer* Win32_getReplayBuffer(win32_state* state, int index) {$/;"	f	file:
+Win32_getSecondsElapsed	win32_handmade.cpp	/^inline real32 Win32_getSecondsElapsed(LARGE_INTEGER start, LARGE_INTEGER end) {$/;"	f
+Win32_getWallClock	win32_handmade.cpp	/^inline LARGE_INTEGER Win32_getWallClock() {$/;"	f
+Win32_loadGameCode	win32_handmade.cpp	/^static win32_GameCode Win32_loadGameCode(char* sourceDLLName, char* tempDLLName) {$/;"	f	file:
+Win32_unloadGameCode	win32_handmade.cpp	/^static void Win32_unloadGameCode(win32_GameCode* gameCode) {$/;"	f	file:
+WinMain	win32_handmade.cpp	/^WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {$/;"	f
+XInputGetState	win32_handmade.cpp	34;"	d	file:
+XInputGetState_	win32_handmade.cpp	/^static x_input_get_state* XInputGetState_ = XInputGetStateStub;                                        \/\/ 4)$/;"	v	file:
+XInputSetState	win32_handmade.cpp	41;"	d	file:
+XInputSetState_	win32_handmade.cpp	/^static x_input_set_state* XInputSetState_ = XInputSetStateStub;                                        \/\/ 4)$/;"	v	file:
+X_INPUT_GET_STATE	win32_handmade.cpp	/^X_INPUT_GET_STATE(XInputGetStateStub) { return ERROR_DEVICE_NOT_CONNECTED; }                           \/\/ 3)$/;"	f
+X_INPUT_GET_STATE	win32_handmade.cpp	30;"	d	file:
+X_INPUT_SET_STATE	win32_handmade.cpp	/^X_INPUT_SET_STATE(XInputSetStateStub) { return ERROR_DEVICE_NOT_CONNECTED; }                           \/\/ 3)$/;"	f
+X_INPUT_SET_STATE	win32_handmade.cpp	37;"	d	file:
+actionDown	handmade_platform.h	/^			GameButtonState actionDown;$/;"	m	struct:GameControllerInput::__anon1::__anon2
+actionLeft	handmade_platform.h	/^			GameButtonState actionLeft;$/;"	m	struct:GameControllerInput::__anon1::__anon2
+actionRight	handmade_platform.h	/^			GameButtonState actionRight;$/;"	m	struct:GameControllerInput::__anon1::__anon2
+actionUp	handmade_platform.h	/^			GameButtonState actionUp;$/;"	m	struct:GameControllerInput::__anon1::__anon2
+arrayCount	handmade.h	17;"	d
+assert	handmade.h	10;"	d
+assert	handmade.h	8;"	d
+atan2	handmade_intrinsics.h	/^inline static real32 atan2(real32 y, real32 x) {$/;"	f
+back	handmade_platform.h	/^			GameButtonState back;$/;"	m	struct:GameControllerInput::__anon1::__anon2
+buttons	handmade_platform.h	/^		GameButtonState buttons[12];$/;"	m	union:GameControllerInput::__anon1
+bytesPerPixel	handmade_platform.h	/^	int bytesPerPixel;$/;"	m	struct:GameImageBuffer
+bytesPerSample	win32_handmade.h	/^	int bytesPerSample;$/;"	m	struct:win32_SoundInfo
+catString	win32_handmade.cpp	/^void catString(size_t sourceACount, char* sourceA,$/;"	f
+commonCompilerFlags	build.bat	/^set commonCompilerFlags=-MTd -nologo -Gm- -GR- -EHa- -Od -Oi -WX -W4 -wd4505 -wd4201 -wd4100 -wd4101 -wd4189 -wd4800 -DHANDMADE_WIN32=1 -DHANDMADE_INTERNAL=1 -DHANDMADE_SLOW=1 -FC -Z7  $/;"	v
+commonLinkerFlags	build.bat	/^set commonLinkerFlags= -incremental:no -opt:ref user32.lib gdi32.lib winmm.lib$/;"	v
+contentSize	handmade_platform.h	/^	uint32_t contentSize;$/;"	m	struct:DebugReadFile
+contents	handmade_platform.h	/^	void* contents;$/;"	m	struct:DebugReadFile
+controllers	handmade_platform.h	/^	GameControllerInput controllers[5];$/;"	m	struct:GameInput
+cos	handmade_intrinsics.h	/^inline static real32 cos(real32 angle) {$/;"	f
+debug_platform_free_file_memory	handmade_platform.h	/^typedef DEBUG_PLATFORM_FREE_FILE_MEMORY(debug_platform_free_file_memory);$/;"	t
+debug_platform_read_entire_file	handmade_platform.h	/^typedef DEBUG_PLATFORM_READ_ENTIRE_FILE(debug_platform_read_entire_file);$/;"	t
+debug_platform_write_entire_file	handmade_platform.h	/^typedef DEBUG_PLATFORM_WRITE_ENTIRE_FILE(debug_platform_write_entire_file);$/;"	t
+deltaTimeForFrame	handmade_platform.h	/^	real32 deltaTimeForFrame;$/;"	m	struct:GameInput
+direct_sound_create	win32_handmade.cpp	/^typedef DIRECT_SOUND_CREATE(direct_sound_create);$/;"	t	file:
+drawRectangle	handmade.cpp	/^static void drawRectangle(GameImageBuffer* buffer,$/;"	f	file:
+endedDown	handmade_platform.h	/^	bool endedDown;$/;"	m	struct:GameButtonState
+exeFileName	win32_handmade.h	/^	char exeFileName[WIN32_STATE_FILE_NAME_COUNT];$/;"	m	struct:win32_state
+expectedFlipPlayCursor	win32_handmade.h	/^	DWORD expectedFlipPlayCursor;$/;"	m	struct:win32_DebugTimeMarker
+fileHandle	win32_handmade.h	/^	HANDLE fileHandle;$/;"	m	struct:win32_ReplayBuffer
+fileName	win32_handmade.h	/^	char fileName[WIN32_STATE_FILE_NAME_COUNT];$/;"	m	struct:win32_ReplayBuffer
+flipPlayCursor	win32_handmade.h	/^	DWORD flipPlayCursor;$/;"	m	struct:win32_DebugTimeMarker
+flipWriteCursor	win32_handmade.h	/^	DWORD flipWriteCursor;$/;"	m	struct:win32_DebugTimeMarker
+floorReal32ToInt32	handmade_intrinsics.h	/^inline static int32_t floorReal32ToInt32(real32 val) {$/;"	f
+gameCodeDLL	win32_handmade.h	/^	HMODULE gameCodeDLL;$/;"	m	struct:win32_GameCode
+gameMemoryBlock	win32_handmade.h	/^	void* gameMemoryBlock;$/;"	m	struct:win32_state
+game_get_sound_samples	handmade_platform.h	/^typedef GAME_GET_SOUND_SAMPLES(game_get_sound_samples);$/;"	t
+game_state	handmade.h	/^typedef struct game_state {$/;"	s
+game_state	handmade.h	/^} game_state;$/;"	t	typeref:struct:game_state
+game_update_and_render	handmade_platform.h	/^typedef GAME_UPDATE_AND_RENDER(game_update_and_render);$/;"	t
+getController	handmade.h	/^inline GameControllerInput* getController(GameInput* input, int controllerIndex) {$/;"	f
+getSoundSamples	win32_handmade.h	/^	game_get_sound_samples* getSoundSamples;$/;"	m	struct:win32_GameCode
+getTileMap	handmade.cpp	/^inline tilemap* getTileMap(world* world, int tileMapX, int tileMapY) {$/;"	f
+getTileValue	handmade.cpp	/^inline uint32_t getTileValue(world* world, tilemap* tileMap, int tileX, int tileY) {$/;"	f
+globalPause	win32_handmade.cpp	/^static bool globalPause;$/;"	v	file:
+halfTransitionCount	handmade_platform.h	/^	int halfTransitionCount;$/;"	m	struct:GameButtonState
+inputPlayingIndex	win32_handmade.h	/^	int inputPlayingIndex;$/;"	m	struct:win32_state
+inputRecordingIndex	win32_handmade.h	/^	int inputRecordingIndex;$/;"	m	struct:win32_state
+isAnalog	handmade_platform.h	/^	bool isAnalog;$/;"	m	struct:GameControllerInput
+isConnected	handmade_platform.h	/^	bool isConnected;$/;"	m	struct:GameControllerInput
+isInit	handmade_platform.h	/^	bool isInit;$/;"	m	struct:GameMemory
+isTileMapPointEmpty	handmade.cpp	/^static bool isTileMapPointEmpty(world* world, tilemap* tileMap, int32_t testTileX, int32_t testTileY) {$/;"	f	file:
+isValid	win32_handmade.h	/^	bool isValid;$/;"	m	struct:win32_GameCode
+isWorldMapPointEmpty	handmade.cpp	/^static bool isWorldMapPointEmpty(world* world, world_pos* canPos) {$/;"	f	file:
+lShoulder	handmade_platform.h	/^			GameButtonState lShoulder;$/;"	m	struct:GameControllerInput::__anon1::__anon2
+lowerLeftX	handmade.h	/^	real32 lowerLeftX;$/;"	m	struct:world
+lowerLeftY	handmade.h	/^	real32 lowerLeftY;$/;"	m	struct:world
+memoryBlock	win32_handmade.h	/^	void* memoryBlock;$/;"	m	struct:win32_ReplayBuffer
+memoryMap	win32_handmade.h	/^	HANDLE memoryMap;$/;"	m	struct:win32_ReplayBuffer
+metersToPixels	handmade.h	/^	real32 metersToPixels;$/;"	m	struct:world
+mouseButtons	handmade_platform.h	/^	GameButtonState mouseButtons[5];$/;"	m	struct:GameInput
+mouseX	handmade_platform.h	/^	int32_t mouseX; $/;"	m	struct:GameInput
+mouseY	handmade_platform.h	/^	int32_t mouseY; $/;"	m	struct:GameInput
+mouseZ	handmade_platform.h	/^	int32_t mouseZ;$/;"	m	struct:GameInput
+moveDown	handmade_platform.h	/^			GameButtonState moveDown;$/;"	m	struct:GameControllerInput::__anon1::__anon2
+moveLeft	handmade_platform.h	/^			GameButtonState moveLeft;$/;"	m	struct:GameControllerInput::__anon1::__anon2
+moveRight	handmade_platform.h	/^			GameButtonState moveRight;$/;"	m	struct:GameControllerInput::__anon1::__anon2
+moveUp	handmade_platform.h	/^			GameButtonState moveUp;$/;"	m	struct:GameControllerInput::__anon1::__anon2
+numTileMapsX	handmade.h	/^	int32_t numTileMapsX;$/;"	m	struct:world
+numTileMapsY	handmade.h	/^	int32_t numTileMapsY;$/;"	m	struct:world
+numTilesX	handmade.h	/^	int32_t numTilesX;$/;"	m	struct:world
+numTilesY	handmade.h	/^	int32_t numTilesY;$/;"	m	struct:world
+onePastLastSlash	win32_handmade.h	/^	char* onePastLastSlash;$/;"	m	struct:win32_state
+outputByteCount	win32_handmade.h	/^	DWORD outputByteCount;$/;"	m	struct:win32_DebugTimeMarker
+outputLocation	win32_handmade.h	/^	DWORD outputLocation;$/;"	m	struct:win32_DebugTimeMarker
+outputPlayCursor	win32_handmade.h	/^	DWORD outputPlayCursor;$/;"	m	struct:win32_DebugTimeMarker
+outputWriteCursor	win32_handmade.h	/^	DWORD outputWriteCursor;$/;"	m	struct:win32_DebugTimeMarker
+permanentStorage	handmade_platform.h	/^	void* permanentStorage;$/;"	m	struct:GameMemory
+permanentStorageSize	handmade_platform.h	/^	uint64_t permanentStorageSize;$/;"	m	struct:GameMemory
+placeHolder	handmade_platform.h	/^	int placeHolder;$/;"	m	struct:ThreadContext
+playBackHandle	win32_handmade.h	/^	HANDLE playBackHandle;$/;"	m	struct:win32_state
+playerPos	handmade.h	/^	world_pos playerPos;$/;"	m	struct:game_state
+rShoulder	handmade_platform.h	/^			GameButtonState rShoulder;$/;"	m	struct:GameControllerInput::__anon1::__anon2
+real32	handmade_platform.h	/^typedef float real32;$/;"	t
+real64	handmade_platform.h	/^typedef double real64;$/;"	t
+recanonicalizeCoord	handmade.cpp	/^inline void recanonicalizeCoord(world* world, int32_t numTiles, int32_t* tileMap, int32_t* tile, real32* tileRel) {$/;"	f
+recanonicalizePosition	handmade.cpp	/^inline world_pos recanonicalizePosition(world* world, world_pos pos) {$/;"	f
+recordingHandle	win32_handmade.h	/^	HANDLE recordingHandle;$/;"	m	struct:win32_state
+replayBuffers	win32_handmade.h	/^	win32_ReplayBuffer replayBuffers[4];$/;"	m	struct:win32_state
+roundReal32ToInt32	handmade_intrinsics.h	/^inline static int32_t roundReal32ToInt32(real32 val) {$/;"	f
+roundReal32ToUInt32	handmade_intrinsics.h	/^inline static int32_t roundReal32ToUInt32(real32 val) {$/;"	f
+runningSampleIndex	win32_handmade.h	/^	uint32_t runningSampleIndex;$/;"	m	struct:win32_SoundInfo
+safeTruncateUInt64	handmade.h	/^inline uint32_t safeTruncateUInt64(uint64_t value) {$/;"	f
+safetyBytes	win32_handmade.h	/^	DWORD safetyBytes;$/;"	m	struct:win32_SoundInfo
+sampleCount	handmade_platform.h	/^	int sampleCount;$/;"	m	struct:GameSoundBuffer
+samples	handmade_platform.h	/^	int16_t* samples;$/;"	m	struct:GameSoundBuffer
+samplesPerSecond	handmade_platform.h	/^	int samplesPerSecond;$/;"	m	struct:GameSoundBuffer
+samplesPerSecond	win32_handmade.h	/^	int samplesPerSecond;$/;"	m	struct:win32_SoundInfo
+secondaryBufferSize	win32_handmade.h	/^	DWORD secondaryBufferSize;$/;"	m	struct:win32_SoundInfo
+sin	handmade_intrinsics.h	/^inline static real32 sin(real32 angle) {$/;"	f
+start	handmade_platform.h	/^			GameButtonState start;$/;"	m	struct:GameControllerInput::__anon1::__anon2
+stickAverageX	handmade_platform.h	/^	real32 stickAverageX;$/;"	m	struct:GameControllerInput
+stickAverageY	handmade_platform.h	/^	real32 stickAverageY;$/;"	m	struct:GameControllerInput
+stringLength	win32_handmade.cpp	/^static int stringLength(char* str) {$/;"	f	file:
+tSine	win32_handmade.h	/^	real32 tSine;$/;"	m	struct:win32_SoundInfo
+tileMapX	handmade.h	/^	int32_t tileMapX; $/;"	m	struct:world_pos
+tileMapY	handmade.h	/^	int32_t tileMapY; $/;"	m	struct:world_pos
+tileMaps	handmade.h	/^	tilemap* tileMaps;$/;"	m	struct:world
+tileRelX	handmade.h	/^	real32 tileRelX; $/;"	m	struct:world_pos
+tileRelY	handmade.h	/^	real32 tileRelY;$/;"	m	struct:world_pos
+tileSideInMeters	handmade.h	/^	real32 tileSideInMeters;$/;"	m	struct:world
+tileSideInPixels	handmade.h	/^	int32_t tileSideInPixels;$/;"	m	struct:world
+tileX	handmade.h	/^	int32_t tileX;$/;"	m	struct:world_pos
+tileY	handmade.h	/^	int32_t tileY;$/;"	m	struct:world_pos
+tilemap	handmade.h	/^typedef struct tilemap {$/;"	s
+tilemap	handmade.h	/^} tilemap;$/;"	t	typeref:struct:tilemap
+tiles	handmade.h	/^	uint32_t* tiles;$/;"	m	struct:tilemap
+totalSize	win32_handmade.h	/^	uint64_t totalSize;$/;"	m	struct:win32_state
+transientStorage	handmade_platform.h	/^	void* transientStorage;$/;"	m	struct:GameMemory
+transientStorageSize	handmade_platform.h	/^	uint64_t transientStorageSize;$/;"	m	struct:GameMemory
+truncateReal32ToInt32	handmade_intrinsics.h	/^inline static int32_t truncateReal32ToInt32(real32 val) {$/;"	f
+updateAndRender	win32_handmade.h	/^	game_update_and_render* updateAndRender;$/;"	m	struct:win32_GameCode
+win32_Buffer	win32_handmade.h	/^struct win32_Buffer {$/;"	s
+win32_DebugTimeMarker	win32_handmade.h	/^struct win32_DebugTimeMarker {$/;"	s
+win32_GameCode	win32_handmade.h	/^struct win32_GameCode {$/;"	s
+win32_ReplayBuffer	win32_handmade.h	/^struct win32_ReplayBuffer {$/;"	s
+win32_SoundInfo	win32_handmade.h	/^struct win32_SoundInfo {$/;"	s
+win32_WinDim	win32_handmade.h	/^struct win32_WinDim {$/;"	s
+win32_handmade_h	win32_handmade.h	2;"	d
+win32_state	win32_handmade.h	/^struct win32_state {$/;"	s
+world	handmade.h	/^typedef struct world {$/;"	s
+world	handmade.h	/^} world;$/;"	t	typeref:struct:world
+world_pos	handmade.h	/^typedef struct world_pos {$/;"	s
+world_pos	handmade.h	/^} world_pos;$/;"	t	typeref:struct:world_pos
+x_input_get_state	win32_handmade.cpp	/^typedef X_INPUT_GET_STATE(x_input_get_state);                                                          \/\/ 2)$/;"	t	file:
+x_input_set_state	win32_handmade.cpp	/^typedef X_INPUT_SET_STATE(x_input_set_state);                                                          \/\/ 2)$/;"	t	file:

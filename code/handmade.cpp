@@ -117,37 +117,24 @@ static bool isTileMapPointEmpty(world* world, tilemap* tileMap, int32_t testTile
 	return isEmpty;
 }
 
-inline void recanonicalizeCoord(world* world, int32_t numTiles, int32_t* tileMap, int32_t* tile, real32* tileRel) {
-
-	// Account for moving into a different tile
+inline void recanonicalizeCoord(world* world, uint32_t* tile, real32* tileRel) {
 	int32_t offset = floorReal32ToInt32(*tileRel / world->tileSideInMeters); // if (greater than 1) --> moved off the tile to the right, vice-versa
 	*tile += offset;
 	*tileRel -= offset * world->tileSideInMeters;
-
-	assert(*tileRel >= 0);
 	assert(*tileRel <= world->tileSideInMeters);
-
-	// Account for moving into a different tile map
-	if (*tile < 0) {
-		*tile += numTiles;
-		*tileMap -= 1;
-	}
-	if (*tile >= numTiles) {
-		*tile -= numTiles;
-		*tileMap += 1;
-	}
+	assert(*tileRel >= 0);
 }
 
 inline world_pos recanonicalizePosition(world* world, world_pos pos) {
 	world_pos res = pos;
-	recanonicalizeCoord(world, world->numTilesX, &res.tileMapX, &res.tileX, &res.tileRelX);
-	recanonicalizeCoord(world, world->numTilesY, &res.tileMapY, &res.tileY, &res.tileRelY);
+	recanonicalizeCoord(world, &res.tileX, &res.tileRelX);
+	recanonicalizeCoord(world, &res.tileY, &res.tileRelY);
 	return res;
 }
 
-static bool isWorldMapPointEmpty(world* world, world_pos* canPos) {
+static bool isWorldPointEmpty(world* world, world_pos* canPos) {
 	bool isEmpty = false;
-	tilemap* tileMap = getTileMap(world, canPos->tileMapX, canPos->tileMapY);
+	tilemap* tileMap = getTileMap(world, canPos->tileX, canPos->tileY);
 	isEmpty = isTileMapPointEmpty(world, tileMap, canPos->tileX, canPos->tileY);
 	return isEmpty;
 }
@@ -287,9 +274,9 @@ extern "C" GAME_UPDATE_AND_RENDER(gameUpdateAndRender) {
 				playerRightPos = recanonicalizePosition(&world, playerRightPos);
 
 			// Only change actual location of the player if given valid coordinates
-			if ((isWorldMapPointEmpty(&world, &newPlayerPos)) &&
-				(isWorldMapPointEmpty(&world, &playerLeftPos)) &&
-				(isWorldMapPointEmpty(&world, &playerRightPos)))
+			if ((isWorldPointEmpty(&world, &newPlayerPos)) &&
+				(isWorldPointEmpty(&world, &playerLeftPos)) &&
+				(isWorldPointEmpty(&world, &playerRightPos)))
 			{
 				gameState->playerPos = newPlayerPos;
 			}
